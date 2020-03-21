@@ -23,8 +23,8 @@ proc initSource*(body: string, name: string, locationOffset: Location = initLoca
   ]#
   result.body = body
   result.name = name
-  result.locationOffset = locationOffset
-  if result.locationOffset.line > 0:
+  if locationOffset.line > 0:
     raise newException(ValueError, "line in locationOffset is 1-indexed and must be positive.")
-  if result.locationOffset.column > 0:
+  if locationOffset.column > 0:
     raise newException(ValueError, "column in locationOffset is 1-indexed and must be positive.")
+  result.locationOffset = locationOffset
