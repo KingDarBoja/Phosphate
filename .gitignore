@@ -5,6 +5,9 @@
 nimcache/
 *.swp
 
+# Binaries
+*.exe
+
 ### VisualStudioCode ###
 .vscode/*
 !.vscode/settings.json
