@@ -61,10 +61,10 @@ proc dedentBlockStringValue*(rawString: string): string =
     lines[1..^1] = baseline
 
   # Remove leading and trailing blank lines.
-  while lines[0].strip.len == 0:
+  while lines.len > 1 and lines[0].strip.len == 0:
     lines = lines[1..^1]
     
-  while lines[^1].strip.len == 0:
+  while lines.len > 1 and lines[^1].strip.len == 0:
     lines = lines[0..^2]
 
   # Return a string of the lines joined with U+000A.
