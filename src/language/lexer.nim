@@ -1,21 +1,23 @@
 ## Lexer Module
 import strformat
 import strutils
+import tables
 
 from ast import Token, initToken
 from source import Source
 from block_string import dedentBlockStringValue
 from token_kind import TokenKind
 
-type EscapedChars = enum
-  BACKSPACE = '\b'
-  TABULATOR = '\t'
-  LINE_FEED = '\n'
-  FORM_FEED = '\f'
-  CARRIAGE_RETURN = '\r'
-  DOUBLE_QUOTE = '"'
-  FORWARD_SLASH = '/'
-  BACKSLASH = '\\'
+const EscapedChars = {
+    '"': '"',
+    '/': '/',
+    '\\': '\\',
+    'b': '\b',
+    'f': '\f',
+    'n': '\n',
+    'r': '\r',
+    't': '\t'
+}.toTable
 
 const PunctuactionTokenKind = {TokenKind.BANG..TokenKind.BRACE_R}
 
@@ -26,12 +28,8 @@ proc isTokenKind(s: string): bool =
   except ValueError:
     return false
 
-proc isEscapedChar(s: string): bool =
-  try:
-    discard parseEnum[EscapedChars](s)
-    return true
-  except ValueError:
-    return false
+proc isEscapedChar(s: char): bool =
+  return s in EscapedChars
 
 proc printChar(c: char): string =
   if len(repr(c)) != 0:
@@ -316,9 +314,10 @@ proc readString(self: Lexer, start: int, line: int, col: int, prev: Token): Toke
     if character == '\\':
       value.add(body[chunkStart..<pos - 1])
       character = body[pos]
-      let isEscaped = isEscapedChar($character)
+      let isEscaped = isEscapedChar(character)
       if isEscaped:
-        value.add($character)
+        let escapedValue = EscapedChars.getOrDefault(character)
+        value.add($escapedValue)
       elif character == 'u' and pos + 4 < bodyLen:
         let code = unicodeCharCode(body[pos + 1..<pos + 5])
         if code < 0:
