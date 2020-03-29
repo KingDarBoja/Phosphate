@@ -307,7 +307,7 @@ proc readString(self: Lexer, start: int, line: int, col: int, prev: Token): Toke
       break
     if character == '"':
       value.add(body[chunkStart..<pos])
-      return initToken(TokenKind.STRING, start, pos + 1, line, col, prev, join([value]))
+      return initToken(TokenKind.STRING, start, pos + 1, line, col, prev, join(value))
     if character < ' ' and character != '\t':
       # TODO: Should be GraphQLSyntaxError
       raise newException(ValueError, &"Invalid character within String: {printChar(character)}.")
@@ -378,7 +378,9 @@ proc readToken*(self: var Lexer, prev: Token): Token =
   elif Digits.contains(character) or character == '-':
     return self.readNumber(pos, character, line, col, prev)
   elif character == '"':
-    if body[pos + 1..<pos + 3] == "\"\"":
+    # Extra check as slicing outside the bounds of a sequence 
+    # (for Python built-ins) does not cause an error.
+    if pos + 2 < bodyLen and body[pos + 1..<pos + 3] == "\"\"":
       return self.readBlockString(pos, line, col, prev)
     return self.readString(pos, line, col, prev)
   # TODO: Should be GraphQLSyntaxError
