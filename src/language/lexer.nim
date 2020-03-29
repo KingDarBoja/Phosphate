@@ -261,7 +261,7 @@ proc readBlockString(self: var Lexer, start: int, line: int, col: int, prev: Tok
 
   while pos < bodyLen:
     var character = body[pos]
-    if character == '"' and body[pos + 1..<pos + 3] == "\"\"":
+    if character == '"' and pos + 2 < bodyLen and body[pos + 1..<pos + 3] == "\"\"":
       rawValue = rawValue & body[chunkStart..<pos]
       return initToken(TokenKind.BLOCK_STRING, start, pos + 3, line, col, prev, dedentBlockStringValue(rawValue))
     if character < ' ' and character notin "\t\n\r":
