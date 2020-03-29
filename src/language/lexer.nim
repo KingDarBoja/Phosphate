@@ -7,7 +7,6 @@ from source import Source
 from block_string import dedentBlockStringValue
 from token_kind import TokenKind
 
-
 type EscapedChars = enum
   BACKSPACE = '\b'
   TABULATOR = '\t'
@@ -120,8 +119,17 @@ proc positionAfterWhitespace*(self: var Lexer, body: string, startPosition: int)
   var pos = startPosition
   while pos < bodyLen:
     let character = body[pos]
-    if character in " \t,\ufeff":
-      inc(pos)
+    # Check if space, tab, comma
+    if character in {' ', '\t', ','}:
+      inc(pos, 1)
+    elif (
+      # Check if byte order mark (BOM)
+      (bodyLen - pos) >= 3 and 
+      body[pos] == '\xEF' and 
+      body[pos + 1] == '\xBB' and 
+      body[pos + 2] == '\xBF'
+    ):
+      inc(pos, 3)
     elif character == '\n':
       inc(pos)
       inc(self.line)

@@ -32,12 +32,11 @@ suite "Describe Lexer":
     assertSyntaxError("\x07", "Cannot contain the invalid character '\\7'.")
     assertSyntaxError(r"\x07", "Cannot parse the unexpected character '\\\\'.")
 
-  # TODO: This is failing :/
   test "Accepts Bom header":
     let sampleToken = lexOne("\uFEFF foo")
     check(sampleToken.kind == TokenKind.NAME)
-    check(sampleToken.start == 2)
-    check(sampleToken.`end` == 5)
+    check(sampleToken.start == 4)
+    check(sampleToken.`end` == 7)
     check(sampleToken.value == "foo")
 
 suite "Describe Is Punctuator Token Kind":
