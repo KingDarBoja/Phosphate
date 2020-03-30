@@ -169,6 +169,17 @@ suite "Describe Lexer":
       ),
       initToken(TokenKind.BLOCK_STRING, 0, 68, 1, 1, TokenSOF, "spans\n  multiple\n    lines")
     )
+
+  test "Advance line after lexing multiline block string":
+    compareTokensTwo(
+      lexSecond("""\"\"\"
+      
+      spans
+        multiple
+          lines
+
+      \n \"\"\" second_token"""),
+      initToken(TokenKind.NAME, 71, 83, 8, 6, TokenSOF, "second_token"))
     
 suite "Describe Is Punctuator Token Kind":
 
