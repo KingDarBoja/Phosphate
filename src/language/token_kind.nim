@@ -15,7 +15,7 @@ type TokenKind* = enum
   EQUALS = "="
   AT = "@"
   BRACKET_L = "["
-  BRAKET_R = "]"
+  BRACKET_R = "]"
   BRACE_L = "{"
   PIPE = "|"
   BRACE_R = "}"
