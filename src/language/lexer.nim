@@ -32,6 +32,8 @@ proc isEscapedChar(s: char): bool =
   return s in EscapedChars
 
 proc printChar(c: char): string =
+  echo "Print char"
+  echo repr(c)
   if len(repr(c)) != 0:
     return repr(c)
   else:
@@ -39,7 +41,7 @@ proc printChar(c: char): string =
 
 proc isNameStart(c: char): bool =
   #[
-    """Check whether char is an underscore or a plain ASCII letter"""
+    Check whether char is an underscore or a plain ASCII letter
   ]#
   return IdentStartChars.contains(c)
 
@@ -186,13 +188,14 @@ proc readDigits(self: Lexer, start: int, character: var char): int =
   var pos = start
   while Digits.contains(character):
     inc(pos)
-    if pos < bodyLen - 1:
+    if pos < bodyLen:
       character = body[pos]
     else:
       break
   if pos == start:
     # TODO: Should be GraphQLSyntaxError
     raise newException(ValueError, &"Invalid number, expected digit but got: {printChar(character)}.")
+  return pos
 
 proc readNumber(self: Lexer, start: int, character: var char, line: int, col: int, prev: Token): Token =
   #[
@@ -202,42 +205,52 @@ proc readNumber(self: Lexer, start: int, character: var char, line: int, col: in
   ]#
   let source = self.source
   let body = source.body
+  let bodyLen = body.len
   var pos = start
   var isFloat = false
+
   if character == '-':
     inc(pos)
-    character = body[pos]
+    if pos < bodyLen:
+      character = body[pos]
 
   if character == '0':
     inc(pos)
-    character = body[pos]
-    # TODO: Use Digits const from strutils
-    if Digits.contains(character):
-      # TODO: Should be GraphQLSyntaxError
-      raise newException(ValueError, &"Invalid number, unexpected digit after 0: {printChar(character)}.")
+    if pos < bodyLen:
+      character = body[pos]
+      # TODO: Use Digits const from strutils
+      if Digits.contains(character):
+        # TODO: Should be GraphQLSyntaxError
+        raise newException(ValueError, &"Invalid number, unexpected digit after 0: {printChar(character)}.")
   else:
     pos = self.readDigits(pos, character)
-    character = body[pos]
+    if pos < bodyLen:
+      character = body[pos]
 
   if character == '.':
     isFloat = true
     inc(pos)
-    character = body[pos]
-    pos = self.readDigits(pos, character)
-    character = body[pos]
+    if pos < bodyLen:
+      character = body[pos]
+      pos = self.readDigits(pos, character)
+      if pos < bodyLen:
+        character = body[pos]
 
-  if len($character) != 0 and character in "Ee":
+  if character in {'E', 'e'}:
     isFloat = true
     inc(pos)
-    character = body[pos]
-    if len($character) != 0 and character in "+-":
-      inc(pos)
+    if pos < bodyLen:
       character = body[pos]
+    if character in {'+', '-'}:
+      inc(pos)
+      if pos < bodyLen:
+        character = body[pos]
     pos = self.readDigits(pos, character)
-    character = body[pos]
+    if pos < bodyLen:
+      character = body[pos]
 
   # Numbers cannot be followed by . or NameStart
-  if len($character) != 0 and (character == '.' or isNameStart(character)):
+  if character == '.' or isNameStart(character):
     # TODO: Should be GraphQLSyntaxError
     raise newException(ValueError, &"Invalid number, expected digit but got: {printChar(character)}.")
 
@@ -264,22 +277,29 @@ proc readBlockString(self: var Lexer, start: int, line: int, col: int, prev: Tok
     if character == '"' and pos + 2 < bodyLen and body[pos + 1..<pos + 3] == "\"\"":
       rawValue = rawValue & body[chunkStart..<pos]
       return initToken(TokenKind.BLOCK_STRING, start, pos + 3, line, col, prev, dedentBlockStringValue(rawValue))
-    if character < ' ' and character notin "\t\n\r":
+    if character < ' ' and character notin {'\t', '\n', '\r'}:
       # TODO: Should be GraphQLSyntaxError
       raise newException(ValueError, &"Invalid character within String: {printChar(character)}.")
     if character == '\n':
       inc(pos)
       inc(self.line)
       self.lineStart = pos
-    elif character == '\r':
-      if body[pos + 1] == '\n':
-        inc(pos, 2)
-      else:
-        inc(pos)
+    elif pos + 1 < bodyLen and character == '\\' and body[pos + 1] == 'n':
+      inc(pos, 2)
       inc(self.line)
       self.lineStart = pos
-    elif character == '\\' and body[pos + 1..<pos + 4] == "\"\"\"":
-      rawValue = rawValue & body[chunkStart..<pos] & "\"\"\""
+    elif character == '\r':
+      inc(pos, 1)
+      inc(self.line)
+      self.lineStart = pos
+    elif pos + 1 < bodyLen and character == '\\' and body[pos + 1] == 'n':
+      inc(pos, 2)
+      inc(self.line)
+      self.lineStart = pos
+    elif character == '\\' and pos + 3 < bodyLen and (
+      body[pos + 1] == '"' and body[pos + 2] == '"' and body[pos + 3] == '"'
+    ):
+      rawValue = rawValue & body[chunkStart..<pos] & '"' & '"' & '"'
       inc(pos, 4)
       chunkStart = pos
     else:
@@ -354,11 +374,18 @@ proc readToken*(self: var Lexer, prev: Token): Token =
   let line = self.line
   # TODO: Check col value
   let col = 1 + pos - self.lineStart
+  # echo fmt"{body}"
+  # echo &"Previous Token End ->{prev.`end`}"
+  # echo &"Body length ->{body.len}"
+  # echo &"Read Token - Line Start: {self.lineStart}"
+  # echo &"Read Token - Position: {pos}"
+  # echo &"Read Token - Column: {col}"
 
   if pos >= bodyLen:
     return initToken(TokenKind.EOF, bodyLen, bodyLen, line, col, prev)
 
   var character = body[pos]
+  # echo &"First character encountered ->{character}"
   let isToken = isTokenKind($character)
   var kind: bool = false
   if isToken:
