@@ -1,10 +1,11 @@
 import unittest
-# import strformat
+import strformat
 
 import language/ast
 import language/token_kind
 import language/source
 import language/lexer
+import nimutils/dedent
 
 suite "Describe Lexer":
 
@@ -47,6 +48,7 @@ suite "Describe Lexer":
   test "Disallows uncommon control characters":
     assertSyntaxError("\x07", "Cannot contain the invalid character '\\x07'.")
 
+  # TODO: Failing test due to start and end offset by 2 (unicode)
   test "Accepts Bom header":
     compareTokensOne(lexOne("\uFEFF foo"), initToken(TokenKind.NAME, 2, 5, 1, 3, value = "foo"))
 
@@ -77,15 +79,44 @@ suite "Describe Lexer":
 
   # TODO: Requires GraphQLSyntaxError type.
   test "Errors respect whitespace":
-    discard
+    try:
+      discard lexOne("\n\n    ?\n")
+    except ValueError as error:
+      check(
+        error.msg & '\n' == dedent(
+        """
+        Cannot parse the unexpected character '?'.
+        """)
+      )
 
   # TODO: Requires GraphQLSyntaxError type.
   test "Updates line numbers in error for file context":
-    discard
+    let s = "\n\n     ?\n\n"
+    let source = initSource(s, "foo.js")
+    try:
+      var lex = initLexer(source)
+      discard lex.advance()
+    except ValueError as error:
+      check(
+        error.msg & '\n' == dedent(
+        """
+        Cannot parse the unexpected character '?'.
+        """)
+      )
 
   # TODO: Requires GraphQLSyntaxError type.
   test "Updates column numbers in error for file context":
-    discard
+    let source = initSource("?", "foo.js")
+    try:
+      var lex = initLexer(source)
+      discard lex.advance()
+    except ValueError as error:
+      check(
+        error.msg & '\n' == dedent(
+        """
+        Cannot parse the unexpected character '?'.
+        """)
+      )
 
   test "Lexes strings":
     compareTokensOne(lexOne("\"\""), initToken(TokenKind.STRING, 0, 2, 1, 1, TokenSOF, ""))
@@ -171,16 +202,186 @@ suite "Describe Lexer":
     )
 
   test "Advance line after lexing multiline block string":
+    let trquote = "\"\"\""
     compareTokensTwo(
-      lexSecond("""\"\"\"
-      
-      spans
-        multiple
-          lines
+        lexSecond(
+                fmt"""{trquote}
 
-      \n \"\"\" second_token"""),
-      initToken(TokenKind.NAME, 71, 83, 8, 6, TokenSOF, "second_token"))
+        spans
+          multiple
+            lines
+
+        \n {trquote} second_token"""
+        ),
+      initToken(TokenKind.NAME, 72, 84, 8, 6, TokenSOF, "second_token"))
+
+  test "Lex reports useful block string errors":
+    assertSyntaxError("\"\"\"", "Unterminated string.")
+    assertSyntaxError("\"\"\"no end quote", "Unterminated string.")
+    # TODO: Failing test, check for hex handling.
+    assertSyntaxError("\"\"\"contains unescaped \x07 control char\"\"\"", "Invalid character within String: '\\x07'.")
+    # TODO: Failing test, check for hex handling.
+    assertSyntaxError("\"\"\"null-byte is not \x00 end of file\"\"\"", "Invalid character within String: '\\x00'.")
+
+  test "Lexes numbers":
+    compareTokensOne(
+      lexOne("0"), initToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "0")
+    )
+    compareTokensOne(
+      lexOne("1"), initToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "1")
+    )
+    compareTokensOne(
+      lexOne("4"), initToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "4")
+    )
+    compareTokensOne(
+      lexOne("9"), initToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "9")
+    )
+    compareTokensOne(
+      lexOne("42"), initToken(TokenKind.INT, 0, 2, 1, 1, TokenSOF, "42")
+    )
+    compareTokensOne(
+      lexOne("4.123"), initToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "4.123")
+    )
+    compareTokensOne(
+      lexOne("-4"), initToken(TokenKind.INT, 0, 2, 1, 1, TokenSOF, "-4")
+    )
+    compareTokensOne(
+      lexOne("-42"), initToken(TokenKind.INT, 0, 3, 1, 1, TokenSOF, "-42")
+    )
+    compareTokensOne(
+      lexOne("-4.123"), initToken(TokenKind.FLOAT, 0, 6, 1, 1, TokenSOF, "-4.123")
+    )
+    compareTokensOne(
+      lexOne("0.123"), initToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "0.123")
+    )
+    compareTokensOne(
+      lexOne("123e4"), initToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "123e4")
+    )
+    compareTokensOne(
+      lexOne("123E4"), initToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "123E4")
+    )
+    compareTokensOne(
+      lexOne("123e-4"), initToken(TokenKind.FLOAT, 0, 6, 1, 1, TokenSOF, "123e-4")
+    )
+    compareTokensOne(
+      lexOne("123e+4"), initToken(TokenKind.FLOAT, 0, 6, 1, 1, TokenSOF, "123e+4")
+    )
+    compareTokensOne(
+      lexOne("-1.123e4"), initToken(TokenKind.FLOAT, 0, 8, 1, 1, TokenSOF, "-1.123e4")
+    )
+    compareTokensOne(
+      lexOne("-1.123E4"), initToken(TokenKind.FLOAT, 0, 8, 1, 1, TokenSOF, "-1.123E4")
+    )
+    compareTokensOne(
+      lexOne("-1.123e-4"), initToken(TokenKind.FLOAT, 0, 9, 1, 1, TokenSOF, "-1.123e-4")
+    )
+    compareTokensOne(
+      lexOne("-1.123e+4"), initToken(TokenKind.FLOAT, 0, 9, 1, 1, TokenSOF, "-1.123e+4")
+    )
+    compareTokensOne(
+      lexOne("-1.123e4567"), initToken(TokenKind.FLOAT, 0, 11, 1, 1, TokenSOF, "-1.123e4567")
+    )
+
+  test "Lex reports useful number errors":
+    assertSyntaxError("00", "Invalid number, unexpected digit after 0: '0'.")
+    assertSyntaxError("01", "Invalid number, unexpected digit after 0: '1'.")
+    assertSyntaxError("01.23", "Invalid number, unexpected digit after 0: '1'.")
+    assertSyntaxError("+1", "Cannot parse the unexpected character '+'.")
+    assertSyntaxError("1.", "Invalid number, expected digit but got: <EOF>.")
+    assertSyntaxError("1e", "Invalid number, expected digit but got: <EOF>.")
+    assertSyntaxError("1E", "Invalid number, expected digit but got: <EOF>.")
+    assertSyntaxError("1.e1", "Invalid number, expected digit but got: 'e'.")
+    assertSyntaxError(".123", "Cannot parse the unexpected character '.'.")
+    assertSyntaxError("1.A", "Invalid number, expected digit but got: 'A'.")
+    assertSyntaxError("-A", "Invalid number, expected digit but got: 'A'.")
+    assertSyntaxError("1.0e", "Invalid number, expected digit but got: <EOF>.")
+    assertSyntaxError("1.0eA", "Invalid number, expected digit but got: 'A'.")
+    assertSyntaxError("1.2e3e", "Invalid number, expected digit but got: 'e'.")
+    assertSyntaxError("1.2e3.4", "Invalid number, expected digit but got: '.'.")
+    assertSyntaxError("1.23.4", "Invalid number, expected digit but got: '.'.")
     
+  test "Lex does not allow name start after a number":
+    assertSyntaxError("0xF1", "Invalid number, expected digit but got: 'x'.")
+    assertSyntaxError("0b10", "Invalid number, expected digit but got: 'b'.")
+    assertSyntaxError("123abc", "Invalid number, expected digit but got: 'a'.")
+    assertSyntaxError("1_1234", "Invalid number, expected digit but got: '_'.")
+    # TODO: Failing test, check for hex handling.
+    assertSyntaxError("1ß", "Cannot parse the unexpected character 'ß'.")
+    assertSyntaxError("1.23f", "Invalid number, expected digit but got: 'f'.")
+    # TODO: Failing test, check for hex handling.
+    assertSyntaxError("12ß", "Cannot parse the unexpected character 'ß'.")
+
+  test "Lexes punctuation":
+    compareTokensOne(lexOne("!"), initToken(TokenKind.BANG, 0, 1, 1, 1))
+    compareTokensOne(lexOne("$"), initToken(TokenKind.DOLLAR, 0, 1, 1, 1))
+    compareTokensOne(lexOne("("), initToken(TokenKind.PAREN_L, 0, 1, 1, 1))
+    compareTokensOne(lexOne(")"), initToken(TokenKind.PAREN_R, 0, 1, 1, 1))
+    compareTokensOne(lexOne("..."), initToken(TokenKind.SPREAD, 0, 3, 1, 1))
+    compareTokensOne(lexOne(":"), initToken(TokenKind.COLON, 0, 1, 1, 1))
+    compareTokensOne(lexOne("="), initToken(TokenKind.EQUALS, 0, 1, 1, 1))
+    compareTokensOne(lexOne("@"), initToken(TokenKind.AT, 0, 1, 1, 1))
+    compareTokensOne(lexOne("["), initToken(TokenKind.BRACKET_L, 0, 1, 1, 1))
+    compareTokensOne(lexOne("]"), initToken(TokenKind.BRACKET_R, 0, 1, 1, 1))
+    compareTokensOne(lexOne("{"), initToken(TokenKind.BRACE_L, 0, 1, 1, 1))
+    compareTokensOne(lexOne("}"), initToken(TokenKind.BRACE_R, 0, 1, 1, 1))
+    compareTokensOne(lexOne("|"), initToken(TokenKind.PIPE, 0, 1, 1, 1))
+
+  test "Lex reports useful unknown character error":
+    assertSyntaxError("..", "Cannot parse the unexpected character '.'.")
+    assertSyntaxError("?", "Cannot parse the unexpected character '?'.")
+    # TODO: Failing test, check for hex handling.
+    assertSyntaxError("\u203B", "Cannot parse the unexpected character '\u203B'.")
+    # TODO: Failing test, check for hex handling.
+    assertSyntaxError("\u200b", "Cannot parse the unexpected character '\\u200b'.")
+
+  test "Lex reports useful information for dashes in names":
+    let source = initSource("a-b")
+    var lex = initLexer(source)
+    let firstToken = lex.advance()
+    compareTokensOne(firstToken, initToken(TokenKind.NAME, 0, 1, 1, 1, TokenSOF, "a"))
+    try:
+      discard lex.advance()
+    except ValueError as error:
+      check(error.msg == "Invalid number, expected digit but got: 'b'.")
+
+  test "Produces double linked list of tokens including comments":
+    let source = initSource(
+      """
+      {
+        #comment
+        field
+      }
+      """
+    )
+    var lex = initLexer(source)
+    let startToken = lex.token
+    var endToken: Token
+    while true:
+      endToken = lex.advance()
+      if endToken.kind == TokenKind.EOF:
+        break
+      check(endToken.kind != TokenKind.COMMENT)
+    check(startToken.prev.isNil)
+    check(endToken.next.isNil)
+
+    var tokens: seq[Token]
+    var tok = startToken
+    while not isNil tok:
+      check(tokens.len == 0 or tok.prev == tokens[^1])
+      tokens.add(tok)
+      tok = tok.next
+    var tokKind: seq[string]
+    for tok in tokens:
+      tokKind.add($tok.kind)
+    check(tokKind == @[
+      $TokenKind.SOF,
+      $TokenKind.BRACE_L,
+      $TokenKind.COMMENT,
+      $TokenKind.NAME,
+      $TokenKind.BRACE_R,
+      $TokenKind.EOF
+    ])
+
 suite "Describe Is Punctuator Token Kind":
 
   setup:
