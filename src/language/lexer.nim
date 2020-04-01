@@ -1,12 +1,16 @@
 ## Lexer Module
 import strformat
 import strutils
+import options
 import tables
+
+import nimutils/char_utils
 
 from ast import Token, initToken
 from source import Source
 from block_string import dedentBlockStringValue
 from token_kind import TokenKind
+
 
 const EscapedChars = {
     '"': '"',
@@ -32,10 +36,14 @@ proc isEscapedChar(s: char): bool =
   return s in EscapedChars
 
 proc printChar(c: char): string =
-  echo "Print char"
-  echo repr(c)
-  if len(repr(c)) != 0:
-    return repr(c)
+  #[
+    Return the character as string by using the `repr`  operator
+    instead of `$` (stringify) as it yields a different string representation 
+    (with enclosing quotes).
+  ]#
+  let nc = option(c)
+  if not nc.isNone:
+    return repr(nc.get())
   else:
     return $TokenKind.EOF
 
@@ -93,7 +101,7 @@ type Lexer* = object
   ]#
   source: Source
   lastToken: Token ## The previously focused non-ignored token.
-  token: Token ## The currently focused non-ignored token.
+  token*: Token ## The currently focused non-ignored token.
   line: int ## The (1-indexed) line containing the current token.
   lineStart: int ## The character offset at which the current line begins.
 
@@ -197,7 +205,7 @@ proc readDigits(self: Lexer, start: int, character: var char): int =
     raise newException(ValueError, &"Invalid number, expected digit but got: {printChar(character)}.")
   return pos
 
-proc readNumber(self: Lexer, start: int, character: var char, line: int, col: int, prev: Token): Token =
+proc readNumber(self: Lexer, start: int, character: char, line: int, col: int, prev: Token): Token =
   #[
     Reads a number token from the source file.
     
@@ -205,54 +213,52 @@ proc readNumber(self: Lexer, start: int, character: var char, line: int, col: in
   ]#
   let source = self.source
   let body = source.body
-  let bodyLen = body.len
   var pos = start
   var isFloat = false
 
-  if character == '-':
+  var newChar = option(character)
+  if not newChar.isNone and newChar.get() == '-':
     inc(pos)
-    if pos < bodyLen:
-      character = body[pos]
+    newChar = getCharacter(body, pos)
 
-  if character == '0':
+  if not newChar.isNone and newChar.get() == '0':
     inc(pos)
-    if pos < bodyLen:
-      character = body[pos]
-      # TODO: Use Digits const from strutils
-      if Digits.contains(character):
-        # TODO: Should be GraphQLSyntaxError
-        raise newException(ValueError, &"Invalid number, unexpected digit after 0: {printChar(character)}.")
-  else:
-    pos = self.readDigits(pos, character)
-    if pos < bodyLen:
-      character = body[pos]
+    newChar = getCharacter(body, pos)
+    # TODO: Use Digits const from strutils
+    if not newChar.isNone and Digits.contains(newChar.get()):
+      # TODO: Should be GraphQLSyntaxError
+      raise newException(ValueError, &"Invalid number, unexpected digit after 0: {printChar(newChar.get())}.")
+  elif not newChar.isNone:
+    pos = self.readDigits(pos, newChar.get())
+    newChar = getCharacter(body, pos)
+  # else:
+  #   newChar = getCharacter(body, pos + 1)
 
-  if character == '.':
+  if not newChar.isNone and newChar.get() == '.':
     isFloat = true
     inc(pos)
-    if pos < bodyLen:
-      character = body[pos]
-      pos = self.readDigits(pos, character)
-      if pos < bodyLen:
-        character = body[pos]
+    newChar = getCharacter(body, pos)
+    if not newChar.isNone:
+      pos = self.readDigits(pos, newChar.get())
+      newChar = getCharacter(body, pos)
 
-  if character in {'E', 'e'}:
+  if not newChar.isNone and newChar.get() in {'E', 'e'}:
     isFloat = true
     inc(pos)
-    if pos < bodyLen:
-      character = body[pos]
-    if character in {'+', '-'}:
+    newChar = getCharacter(body, pos)
+    if not newChar.isNone and newChar.get() in {'+', '-'}:
       inc(pos)
-      if pos < bodyLen:
-        character = body[pos]
-    pos = self.readDigits(pos, character)
-    if pos < bodyLen:
-      character = body[pos]
+      newChar = getCharacter(body, pos)
+    if not newChar.isNone:
+      pos = self.readDigits(pos, newChar.get())
+      newChar = getCharacter(body, pos)
 
   # Numbers cannot be followed by . or NameStart
-  if character == '.' or isNameStart(character):
+  if not newChar.isNone and (
+    newChar.get() == '.' or isNameStart(newChar.get())
+  ):
     # TODO: Should be GraphQLSyntaxError
-    raise newException(ValueError, &"Invalid number, expected digit but got: {printChar(character)}.")
+    raise newException(ValueError, &"Invalid number, expected digit but got: {printChar(newChar.get())}.")
 
   var finalTokenKind: TokenKind
   if isFloat:
@@ -369,23 +375,14 @@ proc readToken*(self: var Lexer, prev: Token): Token =
   let body = source.body
   let bodyLen = body.len
 
-  # TODO: Check pos value
   let pos = self.positionAfterWhitespace(body, prev.`end`)
   let line = self.line
-  # TODO: Check col value
   let col = 1 + pos - self.lineStart
-  # echo fmt"{body}"
-  # echo &"Previous Token End ->{prev.`end`}"
-  # echo &"Body length ->{body.len}"
-  # echo &"Read Token - Line Start: {self.lineStart}"
-  # echo &"Read Token - Position: {pos}"
-  # echo &"Read Token - Column: {col}"
 
   if pos >= bodyLen:
     return initToken(TokenKind.EOF, bodyLen, bodyLen, line, col, prev)
 
   var character = body[pos]
-  # echo &"First character encountered ->{character}"
   let isToken = isTokenKind($character)
   var kind: bool = false
   if isToken:
@@ -397,7 +394,7 @@ proc readToken*(self: var Lexer, prev: Token): Token =
   elif character == '#':
     return self.readComment(pos, line, col, prev)
   elif character == '.':
-    if body[pos + 1..<pos + 3] == "..":
+    if pos + 2 < bodyLen and body[pos + 1] == '.' and body[pos + 2] == '.':
       return initToken(TokenKind.SPREAD, pos, pos + 3, line, col, prev)
   elif IdentStartChars.contains(character):
     return self.readName(pos, line, col, prev)
@@ -406,7 +403,7 @@ proc readToken*(self: var Lexer, prev: Token): Token =
   elif character == '"':
     # Extra check as slicing outside the bounds of a sequence 
     # (for Python built-ins) does not cause an error.
-    if pos + 2 < bodyLen and body[pos + 1..<pos + 3] == "\"\"":
+    if pos + 2 < bodyLen and body[pos + 1] == '"' and body[pos + 2] == '"':
       return self.readBlockString(pos, line, col, prev)
     return self.readString(pos, line, col, prev)
   # TODO: Should be GraphQLSyntaxError
