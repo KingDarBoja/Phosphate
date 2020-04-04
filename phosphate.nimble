@@ -13,7 +13,7 @@ srcDir        = "src"
 requires "nim >= 1.0.6"
 
 task test, "Runs the test suite":
-  exec "nim c -r tests/language/test_source"
-  exec "nim c -r tests/language/test_token_kind"
+  exec "nim c -r tests/language/test_source_location"
   exec "nim c -r tests/language/test_block_string"
   exec "nim c -r tests/language/test_lexer"
+  exec "nim c -r tests/error/test_graphql_error"
