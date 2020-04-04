@@ -7,7 +7,7 @@ import tables
 import nimutils/char_utils
 
 from ast import Token, initToken
-from source import Source
+from source_location import Source
 from block_string import dedentBlockStringValue
 from token_kind import TokenKind
 

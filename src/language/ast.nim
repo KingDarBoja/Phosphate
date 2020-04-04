@@ -1,5 +1,5 @@
 ## AST Module
-from source import Source
+from source_location import Source
 from token_kind import TokenKind
 from ast_kind import ASTKind
 
@@ -42,18 +42,18 @@ proc initToken*(
   result.prev = prev
   result.next = nil
 
-type Location* = object
+type Location* = ref object
   #[
     AST Location
 
     Contains a range of UTF-8 character offsets and token references that identify the
     region of the source from which the AST derived.
   ]#
-  start: int ## character offset at which this Node begins
-  `end`: int ## character offset at which this Node ends
-  startToken: Token ## Token at which this Node begins
-  endToken: Token ## Token at which this Node ends.
-  source: Source ## Source document the AST represents
+  start*: int ## character offset at which this Node begins
+  `end`*: int ## character offset at which this Node ends
+  startToken*: Token ## Token at which this Node begins
+  endToken*: Token ## Token at which this Node ends.
+  source*: Source ## Source document the AST represents
 
 proc initLocation*(
   star: int,
@@ -62,6 +62,7 @@ proc initLocation*(
   endToken: Token,
   source: Source
 ): Location =
+  new(result)
   result.start = startToken.start
   result.end = endToken.end
   result.startToken = startToken
@@ -86,8 +87,8 @@ proc initLocation*(
 ]#
 
 type Node* = ref object of RootObj ## Base AST Node
-  loc: Location
-  kind: ASTKind
+  loc*: Location
+  kind*: ASTKind
 
 # Name
 

@@ -3,7 +3,7 @@ import strformat
 
 import language/ast
 import language/token_kind
-import language/source
+import language/source_location
 import language/lexer
 import nimutils/dedent
 
@@ -13,12 +13,12 @@ suite "Describe Lexer":
     let TokenSOF = initToken(TokenKind.SOF, 0, 0, 0, 0)
     
     proc lexOne(s: string): Token =
-      let source = initSource(s)
+      let source = newSource(s)
       var lexer = initLexer(source)
       return lexer.advance()
 
     proc lexSecond(s: string): Token =
-      let source = initSource(s)
+      let source = newSource(s)
       var lexer = initLexer(source)
       discard lexer.advance()
       return lexer.advance()
@@ -92,7 +92,7 @@ suite "Describe Lexer":
   # TODO: Requires GraphQLSyntaxError type.
   test "Updates line numbers in error for file context":
     let s = "\n\n     ?\n\n"
-    let source = initSource(s, "foo.js")
+    let source = newSource(s, "foo.js")
     try:
       var lex = initLexer(source)
       discard lex.advance()
@@ -106,7 +106,7 @@ suite "Describe Lexer":
 
   # TODO: Requires GraphQLSyntaxError type.
   test "Updates column numbers in error for file context":
-    let source = initSource("?", "foo.js")
+    let source = newSource("?", "foo.js")
     try:
       var lex = initLexer(source)
       discard lex.advance()
@@ -335,7 +335,7 @@ suite "Describe Lexer":
     assertSyntaxError("\u200b", "Cannot parse the unexpected character '\\u200b'.")
 
   test "Lex reports useful information for dashes in names":
-    let source = initSource("a-b")
+    let source = newSource("a-b")
     var lex = initLexer(source)
     let firstToken = lex.advance()
     compareTokensOne(firstToken, initToken(TokenKind.NAME, 0, 1, 1, 1, TokenSOF, "a"))
@@ -345,7 +345,7 @@ suite "Describe Lexer":
       check(error.msg == "Invalid number, expected digit but got: 'b'.")
 
   test "Produces double linked list of tokens including comments":
-    let source = initSource(
+    let source = newSource(
       """
       {
         #comment
@@ -386,7 +386,7 @@ suite "Describe Is Punctuator Token Kind":
 
   setup:
     proc lexOne(s: string): Token =
-      let source = initSource(s)
+      let source = newSource(s)
       var lexer = initLexer(source)
       return lexer.advance()
 
