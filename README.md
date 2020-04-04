@@ -8,32 +8,32 @@ This port is based on the [graphql-core](https://github.com/graphql-python/graph
 
 ### TODO LIST
 
-- [-] Language
+- **Language**
     - [x] Token Kind Module
     - [x] Directive Locations Module
     - [x] AST module
-    - [-] AST module tests
+    - [ ] AST module tests
     - [x] Block String module
-    - [-] Block String module Tests
+    - [ ] Block String module Tests
     - [x] Source module
     - [x] Source module tests
     - [x] Location module (Merged into Source module)
-    - [-] Location module tests (Merged into Source module tests)
+    - [ ] Location module tests (Merged into Source module tests)
     - [x] Lexer module (Missing minor tweaks with unicode and hex values)
     - [x] Lexer module tests
-    - [-] Parser module
-    - [-] Parser module tests
-    - [-] Predicates module
-    - [-] Predicates module tests
-    - [-] Visitor module
-    - [-] Visitor module tests
-- [-] Errors
-    - [-] (WIP) GraphQLError module (requires Parser to continue)
-    - [-] (WIP) GraphQLError module tests
-    - [-] LocatedError module
-    - [-] LocatedError module tests
-    - [-] GraphQLSyntaxError module
-    - [-] GraphQLSyntaxError module tests
+    - [ ] Parser module
+    - [ ] Parser module tests
+    - [ ] Predicates module
+    - [ ] Predicates module tests
+    - [ ] Visitor module
+    - [ ] Visitor module tests
+- **Errors**
+    - [ ] (WIP) GraphQLError module (requires Parser to continue)
+    - [ ] (WIP) GraphQLError module tests
+    - [ ] LocatedError module
+    - [ ] LocatedError module tests
+    - [ ] GraphQLSyntaxError module
+    - [ ] GraphQLSyntaxError module tests
 
 ## Development
 
