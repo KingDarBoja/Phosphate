@@ -6,10 +6,9 @@ import strutils
 import sequtils
 
 from language/ast import Node
-from language/source import Source
-from language/location import SourceLocation, getLocation
+from language/source_location import Source, SourceLocation, getLocation
 
-type GraphQLError* = object of Exception
+type GraphQLError* = ref object of CatchableError
   #[
     A GraphQLError describes an Error found during the parse, validate, or execute
     phases of performing a GraphQL operation. In addition to a message, it also includes
@@ -69,7 +68,7 @@ type GraphQLError* = object of Exception
     the values of the table are strings too.
   ]#
 
-proc initGraphQLError*(
+proc newGraphQLError*(
   message: string,
   nodes: Option[seq[Node]] or Option[Node] = none(Node),
   source: Option[Source] = none(Source),
@@ -78,6 +77,7 @@ proc initGraphQLError*(
   originalError: Option[ref Exception] = none(ref Exception),
   extensions: Table[string, string] = initTable[string, string]()
 ): GraphQLError =
+  new(result)
   result.msg = message
 
   var nodesCopy: seq[Node]
