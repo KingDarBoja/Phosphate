@@ -92,23 +92,24 @@ proc isPunctuatorTokenKind*(kind: TokenKind): bool =
   ]#
   return kind in PunctuactionTokenKind
 
-type Lexer* = object
+type Lexer* = ref object
   #[
     A Lexer is a stateful stream generator in that every time it is advanced, it returns
     the next token in the Source. Assuming the source lexes, the final Token emitted by
     the lexer will be of kind EOF, after which the lexer will repeatedly return the same
     EOF token whenever called.
   ]#
-  source: Source
-  lastToken: Token ## The previously focused non-ignored token.
+  source*: Source
+  lastToken*: Token ## The previously focused non-ignored token.
   token*: Token ## The currently focused non-ignored token.
-  line: int ## The (1-indexed) line containing the current token.
-  lineStart: int ## The character offset at which the current line begins.
+  line*: int ## The (1-indexed) line containing the current token.
+  lineStart*: int ## The character offset at which the current line begins.
 
-proc initLexer*(source: Source): Lexer =
+proc newLexer*(source: Source): Lexer =
   #[
     Given a Source object, creates a Lexer for that source.
   ]#
+  new(result)
   result.source = source
   let startOfFileToken = initToken(TokenKind.SOF, 0, 0, 0, 0)
   result.lastToken = startOfFileToken

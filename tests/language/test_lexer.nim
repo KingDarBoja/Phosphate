@@ -14,12 +14,12 @@ suite "Describe Lexer":
     
     proc lexOne(s: string): Token =
       let source = newSource(s)
-      var lexer = initLexer(source)
+      var lexer = newLexer(source)
       return lexer.advance()
 
     proc lexSecond(s: string): Token =
       let source = newSource(s)
-      var lexer = initLexer(source)
+      var lexer = newLexer(source)
       discard lexer.advance()
       return lexer.advance()
 
@@ -94,7 +94,7 @@ suite "Describe Lexer":
     let s = "\n\n     ?\n\n"
     let source = newSource(s, "foo.js")
     try:
-      var lex = initLexer(source)
+      var lex = newLexer(source)
       discard lex.advance()
     except ValueError as error:
       check(
@@ -108,7 +108,7 @@ suite "Describe Lexer":
   test "Updates column numbers in error for file context":
     let source = newSource("?", "foo.js")
     try:
-      var lex = initLexer(source)
+      var lex = newLexer(source)
       discard lex.advance()
     except ValueError as error:
       check(
@@ -336,7 +336,7 @@ suite "Describe Lexer":
 
   test "Lex reports useful information for dashes in names":
     let source = newSource("a-b")
-    var lex = initLexer(source)
+    var lex = newLexer(source)
     let firstToken = lex.advance()
     compareTokensOne(firstToken, initToken(TokenKind.NAME, 0, 1, 1, 1, TokenSOF, "a"))
     try:
@@ -353,7 +353,7 @@ suite "Describe Lexer":
       }
       """
     )
-    var lex = initLexer(source)
+    var lex = newLexer(source)
     let startToken = lex.token
     var endToken: Token
     while true:
@@ -387,7 +387,7 @@ suite "Describe Is Punctuator Token Kind":
   setup:
     proc lexOne(s: string): Token =
       let source = newSource(s)
-      var lexer = initLexer(source)
+      var lexer = newLexer(source)
       return lexer.advance()
 
     proc isPunctuatorToken(text: string): bool =
