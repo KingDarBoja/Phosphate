@@ -129,7 +129,7 @@ type NamedTypeNode* = ref object of NonNullablesTypes
 # Document
 
 type DocumentNode* = ref object of Node ## Document AST Node
-  definitions*: DefinitionNode
+  definitions*: seq[DefinitionNode]
 
 type VariableDefinitionNode* = ref object of Node
   variable*: VariableNode
@@ -228,7 +228,7 @@ type OperationTypeDefinitionNode* = ref object of Node
 type SchemaDefinitionNode* = ref object of TypeSystemDefinitionNode
   description*: StringValueNode
   directives*: seq[DirectiveNode]
-  operationTypes*: OperationTypeDefinitionNode
+  operationTypes*: seq[OperationTypeDefinitionNode]
 
 # Type Definition
 
