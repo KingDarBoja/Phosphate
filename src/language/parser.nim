@@ -47,13 +47,13 @@ type Parser* = ref object
 
 
 proc newParser*(
-  source: Source or string,
+  source: Source | string,
   noLocation = false,
   experimentalFragmentVariables = false
 ): Parser =
   new(result)
   var sourceCopy: Source
-  if source is string:
+  when source is string:
     let sourceStr = cast[string](source)
     sourceCopy = newSource(sourceStr)
   else:
@@ -92,6 +92,7 @@ proc parseTypeCondition(self: Parser): NamedTypeNode
 # Values Section
 proc parseValueLiteral(self: Parser, isConst: bool): ValueNode
 proc parseList(self: Parser, isConst: bool): ListValueNode
+proc parseObjectField(self: Parser, isConst: bool): ObjectFieldNode
 proc parseObject(self: Parser, isConst: bool): ObjectValueNode
 proc parseInt(self: Parser, isConst: bool = false): IntValueNode
 proc parseFloat(self: Parser, isConst: bool = false): FloatValueNode
@@ -139,10 +140,13 @@ proc parseDirectiveDefinition(self: Parser): DirectiveDefinitionNode
 proc parseDirectiveLocations(self: Parser): seq[NameNode]
 proc parseDirectiveLocation(self: Parser): NameNode
 
+# Emulate Python "Partial"
+let partialValueLiteral = proc(self: Parser): ValueNode = parseValueLiteral(self, true)
+let partialObjectField = proc(self: Parser): ObjectFieldNode = parseObjectField(self, true)
 
 
 proc parse*(
-  source: Source,
+  source: Source or string,
   noLocation = false,
   experimentalFragmentVariables = false,
 ): DocumentNode =
@@ -195,6 +199,8 @@ proc peek*(self: Parser, kind: TokenKind): bool =
   #[
     Determine if the next token is of a given kind
   ]#
+  echo fmt"Input Kind: {kind}"
+  echo fmt"Lexer kind: {self.lexer.token.kind}"
   return self.lexer.token.kind == kind
 
 
@@ -284,7 +290,7 @@ proc unexpected(self: Parser, atToken: Option[Token] = none(Token)): GraphQLErro
 proc anyNode[T](
   self: Parser,
   openKind: TokenKind,
-  parseProc: T,
+  parseProc: proc(self: Parser): T,
   closeKind: TokenKind
 ): seq[T] =
   #[
@@ -297,14 +303,14 @@ proc anyNode[T](
   discard self.expectToken(openKind)
   var nodes: seq[T]
   while self.expectOptionalToken(closeKind).isNil:
-    nodes.add(parseProc)
+    nodes.add(self.parseProc())
   return nodes
 
 
 proc optionalManyNode[T](
   self: Parser,
   openKind: TokenKind,
-  parseProc: T,
+  parseProc: proc(self: Parser): T,
   closeKind: TokenKind
 ): seq[T] =
   #[
@@ -316,9 +322,9 @@ proc optionalManyNode[T](
     `close_kind`. Advances the parser to the next lex token after the closing token.
   ]#
   if not self.expectOptionalToken(openKind).isNil:
-    var nodes: seq[T] = @[parseProc]
+    var nodes: seq[T] = @[self.parseProc()]
     while self.expectOptionalToken(closeKind).isNil:
-      nodes.add(parseProc)
+      nodes.add(self.parseProc())
     return nodes
   return @[]
 
@@ -326,7 +332,7 @@ proc optionalManyNode[T](
 proc manyNode[T](
   self: Parser,
   openKind: TokenKind,
-  parseProc: T,
+  parseProc: proc(self: Parser): T,
   closeKind: TokenKind
 ): seq[T] =
   #[
@@ -337,9 +343,9 @@ proc manyNode[T](
     `close_kind`. Advances the parser to the next lex token after the closing token.
   ]#
   discard self.expectToken(openKind)
-  var nodes: seq[T] = @[parseProc]
+  var nodes: seq[T] = @[self.parseProc()]
   while self.expectOptionalToken(closeKind).isNil:
-    nodes.add(parseProc)
+    nodes.add(self.parseProc())
   return nodes
 
 
@@ -364,7 +370,7 @@ proc parseDocument*(self: Parser): DocumentNode =
   let start = self.lexer.token
   return DocumentNode(
     definitions: self.manyNode[:DefinitionNode](
-      TokenKind.SOF, self.parseDefinition(), TokenKind.EOF
+      TokenKind.SOF, parseDefinition, TokenKind.EOF
     ),
     loc: self.loc(start)
   )
@@ -376,6 +382,7 @@ proc parseDefinition*(self: Parser): DefinitionNode =
 
     ExecutableDefinition: OperationDefinition or FragmentDefinition
   ]#
+  echo "Entered Parse Definition"
   if self.peek(TokenKind.NAME):
     let methodName = self.lexer.token.value
     case methodName
@@ -406,6 +413,7 @@ proc parseOperationDefinition(self: Parser): OperationDefinitionNode =
   #[
     Operation Definition
   ]#
+  echo "Entered Parse Operation Definition"
   let start = self.lexer.token
   if self.peek(TokenKind.BRACE_L):
     return OperationDefinitionNode(
@@ -445,7 +453,7 @@ proc parseVariableDefinitions(self: Parser): seq[VariableDefinitionNode] =
   ]#
   return self.optionalManyNode[:VariableDefinitionNode](
     TokenKind.PAREN_L,
-    self.parseVariableDefinition(),
+    parseVariableDefinition,
     TokenKind.PAREN_R
   )
 
@@ -485,7 +493,7 @@ proc parseSelectionSet(self: Parser): SelectionSetNode =
   return SelectionSetNode(
     selections: self.manyNode[:SelectionNode](
       TokenKind.BRACE_L,
-      self.parseSelection(),
+      parseSelection,
       TokenKind.BRACE_R
     ),
     loc: self.loc(start)
@@ -527,7 +535,7 @@ proc parseArguments(self: Parser, isConst: bool): seq[ArgumentNode] =
   #[
     Arguments[Const]: (Argument[?Const]+)
   ]#
-  let item = if isConst: self.parseConstArgument() else: self.parseArgument()
+  let item = if isConst: parseConstArgument else: parseArgument
   return self.optionalManyNode[:ArgumentNode](
     TokenKind.PAREN_L,
     item,
@@ -670,7 +678,7 @@ proc parseList(self: Parser, isConst: bool): ListValueNode =
   return ListValueNode(
     values: self.anyNode[:ValueNode](
       TokenKind.BRACKET_L,
-      self.parseValueLiteral(isConst),
+      partialValueLiteral,
       TokenKind.BRACKET_R
     ),
     loc: self.loc(start)
@@ -697,7 +705,7 @@ proc parseObject(self: Parser, isConst: bool): ObjectValueNode =
   return ObjectValueNode(
     fields: self.anyNode[:ObjectFieldNode](
       TokenKind.BRACE_L,
-      self.parseObjectField(isConst),
+      partialObjectField,
       TokenKind.BRACE_R
     ),
     loc: self.loc(start)
@@ -907,7 +915,7 @@ proc parseSchemaDefinition(self: Parser): SchemaDefinitionNode =
   let directives = self.parseDirectives(true)
   let operationTypes = self.manyNode[:OperationTypeDefinitionNode](
     TokenKind.BRACE_L,
-    self.parseOperationTypeDefinition(),
+    parseOperationTypeDefinition,
     TokenKind.BRACE_R
   )
   return SchemaDefinitionNode(
@@ -993,7 +1001,7 @@ proc parseFieldsDefinition(self: Parser): seq[FieldDefinitionNode] =
   ]#
   return self.optionalManyNode[:FieldDefinitionNode](
     TokenKind.BRACE_L,
-    self.parseFieldDefinition(),
+    parseFieldDefinition,
     TokenKind.BRACE_R
   )
 
@@ -1025,7 +1033,7 @@ proc parseArgumentDefs(self: Parser): seq[InputValueDefinitionNode] =
   ]#
   return self.optionalManyNode[:InputValueDefinitionNode](
     TokenKind.PAREN_L,
-    self.parseInputValueDef(),
+    parseInputValueDef,
     TokenKind.PAREN_R
   )
 
@@ -1131,7 +1139,7 @@ proc parseEnumValuesDefinition(self: Parser): seq[EnumValueDefinitionNode] =
   ]#
   return self.optionalManyNode[:EnumValueDefinitionNode](
     TokenKind.BRACE_L,
-    self.parseEnumValueDefinition(),
+    parseEnumValueDefinition,
     TokenKind.BRACE_R
   )
 
@@ -1177,7 +1185,7 @@ proc parseInputFieldsDefinition(self: Parser): seq[InputValueDefinitionNode] =
   ]#
   return self.optionalManyNode[:InputValueDefinitionNode](
     TokenKind.BRACE_L,
-    self.parseInputValueDef(),
+    parseInputValueDef,
     TokenKind.BRACE_R
   )
 
@@ -1192,7 +1200,7 @@ proc parseSchemaExtension(self: Parser): SchemaExtensionNode =
   let directives = self.parseDirectives(true)
   let operationTypes = self.optionalManyNode[:OperationTypeDefinitionNode](
     TokenKind.BRACE_L,
-    self.parseOperationTypeDefinition(),
+    parseOperationTypeDefinition,
     TokenKind.BRACE_R
   )
   if directives.len == 0 and operationTypes.len == 0:
