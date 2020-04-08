@@ -110,7 +110,7 @@ proc newGraphQLError*(
   var locations: seq[SourceLocation]
   if positions.isSome and source.isSome:
     locations = collect(newSeq):
-      for pos in positions.get(): getLocation(source.get(), pos)
+      for pos in positionsCopy: getLocation(source.get(), pos)
   elif nodes.isSome:
     locations = collect(newSeq):
       for node in nodesCopy:
