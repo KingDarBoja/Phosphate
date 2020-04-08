@@ -34,10 +34,9 @@ proc getTokenDesc(token: Token): string =
     Describe a token as a string for debugging.
   ]#
   let value = token.value
-  if value.len != 0:
-    return fmt" '{value}'"
-  else:
-    return ""
+  return getTokenKindDesc(token.kind) & (
+    if value.len != 0: fmt" '{value}'" else: ""
+  )
 
 
 type Parser* = ref object
@@ -199,8 +198,6 @@ proc peek*(self: Parser, kind: TokenKind): bool =
   #[
     Determine if the next token is of a given kind
   ]#
-  echo fmt"Input Kind: {kind}"
-  echo fmt"Lexer kind: {self.lexer.token.kind}"
   return self.lexer.token.kind == kind
 
 
@@ -382,7 +379,6 @@ proc parseDefinition*(self: Parser): DefinitionNode =
 
     ExecutableDefinition: OperationDefinition or FragmentDefinition
   ]#
-  echo "Entered Parse Definition"
   if self.peek(TokenKind.NAME):
     let methodName = self.lexer.token.value
     case methodName
@@ -413,7 +409,6 @@ proc parseOperationDefinition(self: Parser): OperationDefinitionNode =
   #[
     Operation Definition
   ]#
-  echo "Entered Parse Operation Definition"
   let start = self.lexer.token
   if self.peek(TokenKind.BRACE_L):
     return OperationDefinitionNode(
