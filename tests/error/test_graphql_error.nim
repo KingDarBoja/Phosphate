@@ -2,32 +2,36 @@ import unittest
 import options
 import typetraits
 
-import error/graphql_error
-# import language/source
 import language/ast
+import language/parser
+import language/source_location
+import error/graphql_error
 
-# import nimutils/dedent
+import nimutils/dedent
 
 suite "Describe graphql error":
 
-  # setup:
-  #   let src = Source(
-  #     dedent(
-  #       """
-  #     {
-  #       field
-  #     }
-  #     """
-  #     )
-  #   )
-  #   let parsedAST = parse()
+  setup:
+    let src = newSource(
+      dedent(
+          """
+      {
+        field
+      }
+      """
+      )
+    )
+    let parsedAST = parse(src)
+    let operationNode = parsedAST.definitions[0]
+    let operationDefNode = cast[OperationDefinitionNode](operationNode)
+    let fieldNode = cast[Node](operationDefNode.selectionSet.selections[0])
 
   test "Is a class and is a subclass of exception":
-    check(initGraphQLError("str") of Exception)
-    check(initGraphQLError("str") of GraphQLError)
+    check(newGraphQLError("str") of Exception)
+    check(newGraphQLError("str") of GraphQLError)
 
   test "Has a name message and stack trace":
-    let e = initGraphQLError("msg")
+    let e = newGraphQLError("msg")
     check(e.type.name == "GraphQLError")
     check(e.msg == "msg")
 
@@ -37,11 +41,12 @@ suite "Describe graphql error":
       raise newException(Exception, "original")
     except Exception as err:
       original = err
-    let e = initGraphQLError("msg", originalError = some(original))
+    let e = newGraphQLError("msg", originalError = some(original))
     check(e.type.name == "GraphQLError")
     check(e.msg == "msg")
     check(e.originalError == original)
     check(e.originalError.msg == "original")
 
-  # test "Converts nodes to positions and locations":
-  #   let e = GraphQLError(msg: "msg")
+  test "Converts nodes to positions and locations":
+    let e = newGraphQLError("msg", some(@[fieldNode]))
+    check(e.nodes == @[fieldNode])
