@@ -28,7 +28,7 @@ suite "Describe Print Location":
         minifiedSource,
         newSourceLocation(1, minifiedSource.body.find("THIRD_ERROR_HERE") + 1)
       )
-    
+
     check(firstLocation & "\n" == dedent(
       """
       GraphQL request:1:53
@@ -48,7 +48,6 @@ suite "Describe Print Location":
       """
     ))
 
-    # TODO: this one is failing
     check(thirdLocation & "\n" == dedent(
       """
       GraphQL request:1:166
@@ -73,7 +72,6 @@ suite "Describe Print Location":
       """
     ))
 
-  # TODO: this one is failing
   test "Prints line numbers with correct padding":
     let res = printSourceLocation(
       newSource("*\n", "Test", newSourceLocation(9, 1)),

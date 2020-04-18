@@ -4,14 +4,17 @@ import ast
 import source_location
 
 
-proc printPrefixedLines*(lines: seq[(string, string)]): string =
+proc printPrefixedLines*(lines: seq[(string, string, bool)]): string =
   ##[
     Print lines specified like this: ("prefix", "string")
+
+    Note: compared to the source code, this pass an extra item to the tuple 
+    which works as a none / null check compared to Python or JS implementation.
   ]##
   var existingLines: seq[(string, string)]
   for line in lines.items:
-    if line[1].len > 0:
-      existingLines.add(line)
+    if line[2]:
+      existingLines.add((line[0], line[1]))
 
   let lineLenSeq = collect(newSeq):
     for line in existingLines: line[0].len
@@ -58,22 +61,24 @@ proc printSourceLocation*(source: Source, sourceLocation: SourceLocation): strin
         subLines.add(locationLine[i ..^ 1])
 
     # This is a rough equivalent as there is no list unpacking
-    var prefixedLines: seq[(string, string)]
-    prefixedLines.add(($lineNum, subLines[0]))
-    if subLineIndex + 1 < subLines.len:
-      for subLine in subLines[1..<subLineIndex + 1]:
-        prefixedLines.add(("", subLine))
-    prefixedLines.add((" ", repeat(" ", subLineColumnNum - 1) & "^"))
+    var prefixedLines: seq[(string, string, bool)]
+    prefixedLines.add(($lineNum, subLines[0], true))
+    if subLineIndex + 1 <= subLines.len:
+      for subLine in subLines[1 ..< subLineIndex + 1]:
+        prefixedLines.add(("", subLine, true))
+    prefixedLines.add((" ", repeat(" ", subLineColumnNum - 1) & "^", true))
     if subLineIndex < subLines.len - 1:
-      prefixedLines.add(("", subLines[subLineIndex + 1]))
+      prefixedLines.add(("", subLines[subLineIndex + 1], true))
+    else:
+      prefixedLines.add(("", "", false))
 
     return locationStr & printPrefixedLines(prefixedLines)
 
   return locationStr & printPrefixedLines(@[
-    (fmt"{lineNum - 1}", if lineIndex > 0: lines[lineIndex - 1] else: ""),
-    (fmt"{lineNum}", locationLine),
-    ("", repeat(" ", columnNum - 1) & "^"),
-    (fmt"{lineNum + 1}", if lineIndex < lines.len - 1: lines[lineIndex + 1] else: "")
+    (&"{lineNum - 1}", if lineIndex > 0: lines[lineIndex - 1] else: "", not lineIndex > 0),
+    (&"{lineNum}", locationLine, true),
+    ("", repeat(" ", columnNum - 1) & "^", true),
+    (&"{lineNum + 1}", if lineIndex < lines.len - 1: lines[lineIndex + 1] else: "", lineIndex < lines.len - 1)
   ])
 
 
