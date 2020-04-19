@@ -63,13 +63,14 @@ proc newParser*(
 
 
 # Forward declarations
+proc expectToken(self: Parser, kind: TokenKind): Token
 
 # Base Section
-proc parseName*(self: Parser): NameNode
-proc parseDocument*(self: Parser): DocumentNode
+proc parseName(self: Parser): NameNode
+proc parseDocument(self: Parser): DocumentNode
 
 # Document Section
-proc parseDefinition*(self: Parser): DefinitionNode
+proc parseDefinition(self: Parser): DefinitionNode
 proc parseOperationDefinition(self: Parser): OperationDefinitionNode
 proc parseOperationType(self: Parser): OperationTypeNode
 proc parseVariableDefinitions(self: Parser): seq[VariableDefinitionNode]
@@ -178,6 +179,60 @@ proc parse*(
   return parser.parseDocument()
 
 
+proc parseValue*(
+  source: Source or string,
+  noLocation = false,
+  experimentalFragmentVariables = false,
+): ValueNode =
+  ##[
+    Parse the AST for a given string containing a GraphQL value.
+
+    Throws GraphQLError if a syntax error is encountered.
+
+    This is useful within tools that operate upon GraphQL Values directly and in
+    isolation of complete GraphQL documents.
+
+    Consider providing the results to the utility function:
+    :func:`~graphql.value_from_ast`.
+  ]##
+  let parser = Parser(
+    source,
+    noLocation,
+    experimentalFragmentVariables
+  )
+  parser.expectToken(TokenKind.SOF)
+  let value = parser.parseValueLiteral(false)
+  parser.expectToken(TokenKind.EOF)
+  return value
+
+
+proc parseType*(
+  source: Source or string,
+  noLocation = false,
+  experimentalFragmentVariables = false,
+): TypeNode =
+  ##[
+    Parse the AST for a given string containing a GraphQL Type.
+
+    Throws GraphQLError if a syntax error is encountered.
+
+    This is useful within tools that operate upon GraphQL Types directly and
+    in isolation of complete GraphQL documents.
+
+    Consider providing the results to the utility function:
+    :func:`~graphql.value_from_ast`.
+  ]##
+  let parser = Parser(
+    source,
+    noLocation,
+    experimentalFragmentVariables
+  )
+  parser.expectToken(TokenKind.SOF)
+  let `type` = parser.parseTypeReference()
+  parser.expectToken(TokenKind.EOF)
+  return `type`
+
+
 # Core parsing utility functions
 
 
@@ -194,7 +249,7 @@ proc loc(self: Parser, startToken: Token): Location =
   return nil
    
    
-proc peek*(self: Parser, kind: TokenKind): bool =
+proc peek(self: Parser, kind: TokenKind): bool =
   #[
     Determine if the next token is of a given kind
   ]#
@@ -349,7 +404,7 @@ proc manyNode[T](
 # Implement the parsing rules in the base section
 
 
-proc parseName*(self: Parser): NameNode =
+proc parseName(self: Parser): NameNode =
   #[
     Convert a name lex token into a name parse node.
   ]#
@@ -360,7 +415,7 @@ proc parseName*(self: Parser): NameNode =
 # Implement the parsing rules in the Document section.
 
 
-proc parseDocument*(self: Parser): DocumentNode =
+proc parseDocument(self: Parser): DocumentNode =
   #[
     Document: Definition
   ]#
@@ -373,7 +428,7 @@ proc parseDocument*(self: Parser): DocumentNode =
   )
 
 
-proc parseDefinition*(self: Parser): DefinitionNode =
+proc parseDefinition(self: Parser): DefinitionNode =
   #[
     Definition: ExecutableDefinition or TypeSystemDefinition/Extension
 
