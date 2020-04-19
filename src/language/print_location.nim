@@ -74,12 +74,13 @@ proc printSourceLocation*(source: Source, sourceLocation: SourceLocation): strin
 
     return locationStr & printPrefixedLines(prefixedLines)
 
-  return locationStr & printPrefixedLines(@[
-    (&"{lineNum - 1}", if lineIndex > 0: lines[lineIndex - 1] else: "", not lineIndex > 0),
+  let prefixedLines = @[
+    (&"{lineNum - 1}", if lineIndex > 0: lines[lineIndex - 1] else: "", lineIndex > 0),
     (&"{lineNum}", locationLine, true),
     ("", repeat(" ", columnNum - 1) & "^", true),
     (&"{lineNum + 1}", if lineIndex < lines.len - 1: lines[lineIndex + 1] else: "", lineIndex < lines.len - 1)
-  ])
+  ]
+  return locationStr & printPrefixedLines(prefixedLines)
 
 
 proc printLocation*(location: Location): string =
