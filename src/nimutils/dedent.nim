@@ -11,11 +11,11 @@ proc dedent*(text: string): string =
     work properly with the string comparison.
   ]#
   # use {.global.} to avoid recompiling the regex multiple times
-  let leadingWhitespace {.global.} = re(r"(^[ \t]*)(?:[^ \t\n])", {reMultiline})
+  let leadingWhitespace {.global.} = re(r"(^[ \t]*)(?:[ \t\n])", {reMultiline})
 
   result = text.strip(trailing = false, chars = {'\n'})
                .strip(leading = false, chars = {' ', '\t'})
-  
+
   # Look for the longest leading string of spaces 
   # and tabs common to all lines.
   var margin: string
