@@ -1,12 +1,9 @@
 ## GraphQL Error Module
-import tables
-import options
-import sugar
-import strutils
-import sequtils
+import options, strutils, strformat, sugar, strtabs, tables
 
-from language/ast import Node
-from language/source_location import Source, SourceLocation, getLocation
+import language/ast
+import language/source_location
+import language/print_location
 
 type GraphQLError* = ref object of CatchableError
   #[
@@ -60,7 +57,7 @@ type GraphQLError* = ref object of CatchableError
     The original error thrown from a field resolver during execution
   ]#
 
-  extensions: Table[string, string]
+  extensions: StringTableRef
   #[
     Extension fields to add to the formatted error
 
@@ -68,14 +65,15 @@ type GraphQLError* = ref object of CatchableError
     the values of the table are strings too.
   ]#
 
+
 proc newGraphQLError*(
   message: string,
   nodes: Option[seq[Node]] or Option[Node] = none(Node),
   source: Option[Source] = none(Source),
   positions: Option[seq[int]] = none(seq[int]),
-  path: Option[seq[string]] or Option[seq[int]] = none(seq[string]),
+  path: seq[string] = @[],
   originalError: Option[ref Exception] = none(ref Exception),
-  extensions: Table[string, string] = initTable[string, string]()
+  extensions: StringTableRef = newStringTable()
 ): GraphQLError =
   new(result)
   result.msg = message
@@ -119,12 +117,7 @@ proc newGraphQLError*(
     discard
   result.locations = locations
 
-  if path.isSome:
-    let pathVal = path.get()
-    when pathVal is seq[int]:
-      result.path = mapIt(pathVal, it.intToStr)
-    else:
-      result.path = pathVal
+  result.path = path
 
   if originalError.isSome:
     let originalErrorVal = originalError.get()
@@ -132,3 +125,81 @@ proc newGraphQLError*(
   # TODO: Need to check the correct type for originalError
   # in order to handle missing extensions
   result.extensions = extensions
+
+
+proc printError*(error: GraphQLError): string
+
+
+proc `$`*(self: GraphQLError): string =
+  result = printError(self)
+
+
+proc `repr`*(self: GraphQLError): string =
+  var args = @[self.msg]
+
+  if self.locations.len > 0:
+    let parsedLocations = collect(newSeq):
+      for location in self.locations: $location
+    let joinedLocations = join(parsedLocations, ", ")
+    args.add(&"locations=[{joinedLocations}]")
+  
+  if self.path.len > 0:
+    let joinedPaths = join(self.path, ", ")
+    args.add(&"path=[{joinedPaths}]")
+
+  if self.extensions.len > 0:
+    args.add(&"extensions={$(self.extensions)}")
+  
+  let joinedArgs = join(args, ", ")
+  return &"{$(type(self))}({joinedArgs})"
+
+
+proc printError*(error: GraphQLError): string =
+  #[
+    Print a GraphQLError to a string.
+
+    Represents useful location information about the error's position in the source.
+  ]#
+  var output = @[error.msg]
+
+  if error.nodes.len > 0:
+    for node in error.nodes:
+      if not node.loc.isNil:
+        output.add(printLocation(node.loc))
+  elif not error.source.isNil and error.locations.len > 0:
+    let source = error.source
+    for location in error.locations:
+      output.add(printSourceLocation(source, location))
+
+  return join(output, "\n\n")
+
+
+proc formatError(error: GraphQLError): Table = 
+  ##[
+    Format a GraphQL error.
+
+    Given a GraphQLError, format it according to the rules described by the "Response
+    Format, Errors" section of the GraphQL Specification.
+  ]##
+  let formattedLocations = collect(newSeq):
+    for location in error.locations:
+      if error.locations.len > 0: location.formatted
+      else: nil
+
+  let formatted = {
+    "message": error.msg or "An unknown error ocurred.",
+    "locations": formattedLocations,
+    "path": error.path
+  }
+
+  if not error.extensions.isNil:
+    formatted.add("extensions": error.extensions)
+
+  return formatted.toTable
+
+
+proc formatted*(self: GraphQLError): Table =
+  ##[
+    Get error formatted according to the specification.
+  ]##
+  return formatError(self)
