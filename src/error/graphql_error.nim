@@ -57,7 +57,7 @@ type GraphQLError* = ref object of CatchableError
     The original error thrown from a field resolver during execution
   ]#
 
-  extensions: StringTableRef
+  extensions*: StringTableRef
   #[
     Extension fields to add to the formatted error
 

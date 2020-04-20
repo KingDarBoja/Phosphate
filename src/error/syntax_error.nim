@@ -1,4 +1,4 @@
-import strformat
+import strformat, options
 
 import language/source_location
 import error/graphql_error
@@ -14,6 +14,18 @@ proc newGraphQLSyntaxError*(
   description: string
 ): GraphQLSyntaxError =
   new(result)
-  result.msg = fmt"Syntax Error: {description}"
-  result.source = source
-  result.positions = @[position]
+  let parentError = newGraphQLError(
+    fmt"Syntax Error: {description}",
+    source = some(source),
+    positions = some(@[position]),
+  )
+  result = GraphQLSyntaxError(
+    msg: parentError.msg,
+    locations: parentError.locations,
+    path: parentError.path,
+    nodes: parentError.nodes,
+    source: parentError.source,
+    positions: parentError.positions,
+    originalError: parentError.originalError,
+    extensions: parentError.extensions
+  )
