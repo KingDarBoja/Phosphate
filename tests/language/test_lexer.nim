@@ -10,7 +10,7 @@ import nimutils/dedent
 suite "Describe Lexer":
 
   setup:
-    let TokenSOF = initToken(TokenKind.SOF, 0, 0, 0, 0)
+    let TokenSOF = newToken(TokenKind.SOF, 0, 0, 0, 0)
     
     proc lexOne(s: string): Token =
       let source = newSource(s)
@@ -50,19 +50,19 @@ suite "Describe Lexer":
 
   # TODO: Failing test due to start and end offset by 2 (unicode)
   test "Accepts Bom header":
-    compareTokensOne(lexOne("\uFEFF foo"), initToken(TokenKind.NAME, 2, 5, 1, 3, value = "foo"))
+    compareTokensOne(lexOne("\uFEFF foo"), newToken(TokenKind.NAME, 2, 5, 1, 3, value = "foo"))
 
   test "Tracks Line Breaks":
-    compareTokensTwo(lexOne("foo"), initToken(TokenKind.NAME, 0, 3, 1, 1, TokenSOF, "foo"))
-    compareTokensTwo(lexOne("\nfoo"), initToken(TokenKind.NAME, 1, 4, 2, 1, TokenSOF, "foo"))
-    compareTokensTwo(lexOne("\rfoo"), initToken(TokenKind.NAME, 1, 4, 2, 1, TokenSOF, "foo"))
-    compareTokensTwo(lexOne("\r\nfoo"), initToken(TokenKind.NAME, 2, 5, 2, 1, TokenSOF, "foo"))
-    compareTokensTwo(lexOne("\n\rfoo"), initToken(TokenKind.NAME, 2, 5, 3, 1, TokenSOF, "foo"))
-    compareTokensTwo(lexOne("\r\r\n\nfoo"), initToken(TokenKind.NAME, 4, 7, 4, 1, TokenSOF, "foo"))
-    compareTokensTwo(lexOne("\n\n\r\rfoo"), initToken(TokenKind.NAME, 4, 7, 5, 1, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("foo"), newToken(TokenKind.NAME, 0, 3, 1, 1, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\nfoo"), newToken(TokenKind.NAME, 1, 4, 2, 1, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\rfoo"), newToken(TokenKind.NAME, 1, 4, 2, 1, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\r\nfoo"), newToken(TokenKind.NAME, 2, 5, 2, 1, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\n\rfoo"), newToken(TokenKind.NAME, 2, 5, 3, 1, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\r\r\n\nfoo"), newToken(TokenKind.NAME, 4, 7, 4, 1, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\n\n\r\rfoo"), newToken(TokenKind.NAME, 4, 7, 5, 1, TokenSOF, "foo"))
 
   test "Records line and column":
-    compareTokensTwo(lexOne("\n \r\n \r  foo\n"), initToken(TokenKind.NAME, 8, 11, 4, 3, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\n \r\n \r  foo\n"), newToken(TokenKind.NAME, 8, 11, 4, 3, TokenSOF, "foo"))
 
   # TODO: Provide nim utils to stringify the object.
   # Example: '{"kind":"Name","value":"foo","line":1,"column":1}',
@@ -70,12 +70,12 @@ suite "Describe Lexer":
     discard
 
   test "Skips whitespace and comments":
-    compareTokensTwo(lexOne("\n\n    foo\n\n\n"), initToken(TokenKind.NAME, 6, 9, 3, 5, TokenSOF, "foo"))
-    compareTokensTwo(lexOne("\r\n\r\n  foo\r\n\r\n"), initToken(TokenKind.NAME, 6, 9, 3, 3, TokenSOF, "foo"))
-    compareTokensTwo(lexOne("\r\r  foo\r\r"), initToken(TokenKind.NAME, 4, 7, 3, 3, TokenSOF, "foo"))
-    compareTokensTwo(lexOne("\t\t  foo\t\t"), initToken(TokenKind.NAME, 4, 7, 1, 5, TokenSOF, "foo"))
-    compareTokensTwo(lexOne("\n    #comment\n    foo#comment\n"), initToken(TokenKind.NAME, 18, 21, 3, 5, TokenSOF, "foo"))
-    compareTokensTwo(lexOne(",,,foo,,,"), initToken(TokenKind.NAME, 3, 6, 1, 4, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\n\n    foo\n\n\n"), newToken(TokenKind.NAME, 6, 9, 3, 5, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\r\n\r\n  foo\r\n\r\n"), newToken(TokenKind.NAME, 6, 9, 3, 3, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\r\r  foo\r\r"), newToken(TokenKind.NAME, 4, 7, 3, 3, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\t\t  foo\t\t"), newToken(TokenKind.NAME, 4, 7, 1, 5, TokenSOF, "foo"))
+    compareTokensTwo(lexOne("\n    #comment\n    foo#comment\n"), newToken(TokenKind.NAME, 18, 21, 3, 5, TokenSOF, "foo"))
+    compareTokensTwo(lexOne(",,,foo,,,"), newToken(TokenKind.NAME, 3, 6, 1, 4, TokenSOF, "foo"))
 
   # TODO: Requires GraphQLSyntaxError type.
   test "Errors respect whitespace":
@@ -119,14 +119,14 @@ suite "Describe Lexer":
       )
 
   test "Lexes strings":
-    compareTokensOne(lexOne("\"\""), initToken(TokenKind.STRING, 0, 2, 1, 1, TokenSOF, ""))
-    compareTokensOne(lexOne("\"simple\""), initToken(TokenKind.STRING, 0, 8, 1, 1, TokenSOF, "simple"))
-    compareTokensOne(lexOne("\" white space \""), initToken(TokenKind.STRING, 0, 15, 1, 1, TokenSOF, " white space "))
-    compareTokensOne(lexOne("\"quote \\\"\""), initToken(TokenKind.STRING, 0, 10, 1, 1, TokenSOF, "quote \""))
-    compareTokensOne(lexOne("\"escaped \\n\\r\\b\\t\\f\""), initToken(TokenKind.STRING, 0, 20, 1, 1, TokenSOF, "escaped \n\r\b\t\f"))
-    compareTokensOne(lexOne("\"slashes \\\\ \\/\""), initToken(TokenKind.STRING, 0, 15, 1, 1, TokenSOF, "slashes \\ /"))
+    compareTokensOne(lexOne("\"\""), newToken(TokenKind.STRING, 0, 2, 1, 1, TokenSOF, ""))
+    compareTokensOne(lexOne("\"simple\""), newToken(TokenKind.STRING, 0, 8, 1, 1, TokenSOF, "simple"))
+    compareTokensOne(lexOne("\" white space \""), newToken(TokenKind.STRING, 0, 15, 1, 1, TokenSOF, " white space "))
+    compareTokensOne(lexOne("\"quote \\\"\""), newToken(TokenKind.STRING, 0, 10, 1, 1, TokenSOF, "quote \""))
+    compareTokensOne(lexOne("\"escaped \\n\\r\\b\\t\\f\""), newToken(TokenKind.STRING, 0, 20, 1, 1, TokenSOF, "escaped \n\r\b\t\f"))
+    compareTokensOne(lexOne("\"slashes \\\\ \\/\""), newToken(TokenKind.STRING, 0, 15, 1, 1, TokenSOF, "slashes \\ /"))
     # TODO: value props are not equal, left is hex, right is unicode.
-    compareTokensOne(lexOne("\"unicode \\u1234\\u5678\\u90AB\\uCDEF\""), initToken(TokenKind.STRING, 0, 34, 1, 1, TokenSOF, "unicode \u1234\u5678\u90AB\uCDEF"))
+    compareTokensOne(lexOne("\"unicode \\u1234\\u5678\\u90AB\\uCDEF\""), newToken(TokenKind.STRING, 0, 34, 1, 1, TokenSOF, "unicode \u1234\u5678\u90AB\uCDEF"))
 
   test "Lex reports useful string errors":
     assertSyntaxError("\"", "Unterminated string.")
@@ -155,50 +155,50 @@ suite "Describe Lexer":
   test "Lexes Block Strings":
     compareTokensOne(
       lexOne("\"\"\"\"\"\""),
-      initToken(TokenKind.BLOCK_STRING, 0, 6, 1, 1, TokenSOF, "")
+      newToken(TokenKind.BLOCK_STRING, 0, 6, 1, 1, TokenSOF, "")
     )
     compareTokensOne(
       lexOne("\"\"\"simple\"\"\""),
-      initToken(TokenKind.BLOCK_STRING, 0, 12, 1, 1, TokenSOF, "simple")
+      newToken(TokenKind.BLOCK_STRING, 0, 12, 1, 1, TokenSOF, "simple")
     )
     compareTokensOne(
       lexOne("\"\"\" white space \"\"\""),
-      initToken(TokenKind.BLOCK_STRING, 0, 19, 1, 1, TokenSOF, " white space ")
+      newToken(TokenKind.BLOCK_STRING, 0, 19, 1, 1, TokenSOF, " white space ")
     )
     compareTokensOne(
       lexOne("\"\"\"contains \" quote\"\"\""),
-      initToken(TokenKind.BLOCK_STRING, 0, 22, 1, 1, TokenSOF, "contains \" quote")
+      newToken(TokenKind.BLOCK_STRING, 0, 22, 1, 1, TokenSOF, "contains \" quote")
     )
     compareTokensOne(
       lexOne("\"\"\"contains \" quote\"\"\""),
-      initToken(TokenKind.BLOCK_STRING, 0, 22, 1, 1, TokenSOF, "contains \" quote")
+      newToken(TokenKind.BLOCK_STRING, 0, 22, 1, 1, TokenSOF, "contains \" quote")
     )
     compareTokensOne(
       lexOne("\"\"\"contains \\\"\"\" triple-quote\"\"\""),
-      initToken(TokenKind.BLOCK_STRING, 0, 32, 1, 1, TokenSOF, "contains \"\"\" triple-quote")
+      newToken(TokenKind.BLOCK_STRING, 0, 32, 1, 1, TokenSOF, "contains \"\"\" triple-quote")
     )
     compareTokensOne(
       lexOne("\"\"\"multi\nline\"\"\""),
-      initToken(TokenKind.BLOCK_STRING, 0, 16, 1, 1, TokenSOF, "multi\nline")
+      newToken(TokenKind.BLOCK_STRING, 0, 16, 1, 1, TokenSOF, "multi\nline")
     )
     compareTokensOne(
       lexOne("\"\"\"multi\rline\r\nnormalized\"\"\""),
-      initToken(TokenKind.BLOCK_STRING, 0, 28, 1, 1, TokenSOF, "multi\nline\nnormalized")
+      newToken(TokenKind.BLOCK_STRING, 0, 28, 1, 1, TokenSOF, "multi\nline\nnormalized")
     )
     compareTokensOne(
       lexOne("\"\"\"unescaped \\n\\r\\b\\t\\f\\u1234\"\"\""),
-      initToken(TokenKind.BLOCK_STRING, 0, 32, 1, 1, TokenSOF, "unescaped \\n\\r\\b\\t\\f\\u1234")
+      newToken(TokenKind.BLOCK_STRING, 0, 32, 1, 1, TokenSOF, "unescaped \\n\\r\\b\\t\\f\\u1234")
     )
     compareTokensOne(
       lexOne("\"\"\"slashes \\\\ \\/\"\"\""),
-      initToken(TokenKind.BLOCK_STRING, 0, 19, 1, 1, TokenSOF, "slashes \\\\ \\/")
+      newToken(TokenKind.BLOCK_STRING, 0, 19, 1, 1, TokenSOF, "slashes \\\\ \\/")
     )
     compareTokensOne(
       lexOne(
         "\"\"\"\n\n        spans\n          multiple\n" &
         "            lines\n\n        \"\"\""
       ),
-      initToken(TokenKind.BLOCK_STRING, 0, 68, 1, 1, TokenSOF, "spans\n  multiple\n    lines")
+      newToken(TokenKind.BLOCK_STRING, 0, 68, 1, 1, TokenSOF, "spans\n  multiple\n    lines")
     )
 
   test "Advance line after lexing multiline block string":
@@ -213,7 +213,7 @@ suite "Describe Lexer":
 
         \n {trquote} second_token"""
         ),
-      initToken(TokenKind.NAME, 72, 84, 8, 6, TokenSOF, "second_token"))
+      newToken(TokenKind.NAME, 72, 84, 8, 6, TokenSOF, "second_token"))
 
   test "Lex reports useful block string errors":
     assertSyntaxError("\"\"\"", "Unterminated string.")
@@ -225,61 +225,61 @@ suite "Describe Lexer":
 
   test "Lexes numbers":
     compareTokensOne(
-      lexOne("0"), initToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "0")
+      lexOne("0"), newToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "0")
     )
     compareTokensOne(
-      lexOne("1"), initToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "1")
+      lexOne("1"), newToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "1")
     )
     compareTokensOne(
-      lexOne("4"), initToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "4")
+      lexOne("4"), newToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "4")
     )
     compareTokensOne(
-      lexOne("9"), initToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "9")
+      lexOne("9"), newToken(TokenKind.INT, 0, 1, 1, 1, TokenSOF, "9")
     )
     compareTokensOne(
-      lexOne("42"), initToken(TokenKind.INT, 0, 2, 1, 1, TokenSOF, "42")
+      lexOne("42"), newToken(TokenKind.INT, 0, 2, 1, 1, TokenSOF, "42")
     )
     compareTokensOne(
-      lexOne("4.123"), initToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "4.123")
+      lexOne("4.123"), newToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "4.123")
     )
     compareTokensOne(
-      lexOne("-4"), initToken(TokenKind.INT, 0, 2, 1, 1, TokenSOF, "-4")
+      lexOne("-4"), newToken(TokenKind.INT, 0, 2, 1, 1, TokenSOF, "-4")
     )
     compareTokensOne(
-      lexOne("-42"), initToken(TokenKind.INT, 0, 3, 1, 1, TokenSOF, "-42")
+      lexOne("-42"), newToken(TokenKind.INT, 0, 3, 1, 1, TokenSOF, "-42")
     )
     compareTokensOne(
-      lexOne("-4.123"), initToken(TokenKind.FLOAT, 0, 6, 1, 1, TokenSOF, "-4.123")
+      lexOne("-4.123"), newToken(TokenKind.FLOAT, 0, 6, 1, 1, TokenSOF, "-4.123")
     )
     compareTokensOne(
-      lexOne("0.123"), initToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "0.123")
+      lexOne("0.123"), newToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "0.123")
     )
     compareTokensOne(
-      lexOne("123e4"), initToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "123e4")
+      lexOne("123e4"), newToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "123e4")
     )
     compareTokensOne(
-      lexOne("123E4"), initToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "123E4")
+      lexOne("123E4"), newToken(TokenKind.FLOAT, 0, 5, 1, 1, TokenSOF, "123E4")
     )
     compareTokensOne(
-      lexOne("123e-4"), initToken(TokenKind.FLOAT, 0, 6, 1, 1, TokenSOF, "123e-4")
+      lexOne("123e-4"), newToken(TokenKind.FLOAT, 0, 6, 1, 1, TokenSOF, "123e-4")
     )
     compareTokensOne(
-      lexOne("123e+4"), initToken(TokenKind.FLOAT, 0, 6, 1, 1, TokenSOF, "123e+4")
+      lexOne("123e+4"), newToken(TokenKind.FLOAT, 0, 6, 1, 1, TokenSOF, "123e+4")
     )
     compareTokensOne(
-      lexOne("-1.123e4"), initToken(TokenKind.FLOAT, 0, 8, 1, 1, TokenSOF, "-1.123e4")
+      lexOne("-1.123e4"), newToken(TokenKind.FLOAT, 0, 8, 1, 1, TokenSOF, "-1.123e4")
     )
     compareTokensOne(
-      lexOne("-1.123E4"), initToken(TokenKind.FLOAT, 0, 8, 1, 1, TokenSOF, "-1.123E4")
+      lexOne("-1.123E4"), newToken(TokenKind.FLOAT, 0, 8, 1, 1, TokenSOF, "-1.123E4")
     )
     compareTokensOne(
-      lexOne("-1.123e-4"), initToken(TokenKind.FLOAT, 0, 9, 1, 1, TokenSOF, "-1.123e-4")
+      lexOne("-1.123e-4"), newToken(TokenKind.FLOAT, 0, 9, 1, 1, TokenSOF, "-1.123e-4")
     )
     compareTokensOne(
-      lexOne("-1.123e+4"), initToken(TokenKind.FLOAT, 0, 9, 1, 1, TokenSOF, "-1.123e+4")
+      lexOne("-1.123e+4"), newToken(TokenKind.FLOAT, 0, 9, 1, 1, TokenSOF, "-1.123e+4")
     )
     compareTokensOne(
-      lexOne("-1.123e4567"), initToken(TokenKind.FLOAT, 0, 11, 1, 1, TokenSOF, "-1.123e4567")
+      lexOne("-1.123e4567"), newToken(TokenKind.FLOAT, 0, 11, 1, 1, TokenSOF, "-1.123e4567")
     )
 
   test "Lex reports useful number errors":
@@ -312,19 +312,19 @@ suite "Describe Lexer":
     assertSyntaxError("12ß", "Cannot parse the unexpected character 'ß'.")
 
   test "Lexes punctuation":
-    compareTokensOne(lexOne("!"), initToken(TokenKind.BANG, 0, 1, 1, 1))
-    compareTokensOne(lexOne("$"), initToken(TokenKind.DOLLAR, 0, 1, 1, 1))
-    compareTokensOne(lexOne("("), initToken(TokenKind.PAREN_L, 0, 1, 1, 1))
-    compareTokensOne(lexOne(")"), initToken(TokenKind.PAREN_R, 0, 1, 1, 1))
-    compareTokensOne(lexOne("..."), initToken(TokenKind.SPREAD, 0, 3, 1, 1))
-    compareTokensOne(lexOne(":"), initToken(TokenKind.COLON, 0, 1, 1, 1))
-    compareTokensOne(lexOne("="), initToken(TokenKind.EQUALS, 0, 1, 1, 1))
-    compareTokensOne(lexOne("@"), initToken(TokenKind.AT, 0, 1, 1, 1))
-    compareTokensOne(lexOne("["), initToken(TokenKind.BRACKET_L, 0, 1, 1, 1))
-    compareTokensOne(lexOne("]"), initToken(TokenKind.BRACKET_R, 0, 1, 1, 1))
-    compareTokensOne(lexOne("{"), initToken(TokenKind.BRACE_L, 0, 1, 1, 1))
-    compareTokensOne(lexOne("}"), initToken(TokenKind.BRACE_R, 0, 1, 1, 1))
-    compareTokensOne(lexOne("|"), initToken(TokenKind.PIPE, 0, 1, 1, 1))
+    compareTokensOne(lexOne("!"), newToken(TokenKind.BANG, 0, 1, 1, 1))
+    compareTokensOne(lexOne("$"), newToken(TokenKind.DOLLAR, 0, 1, 1, 1))
+    compareTokensOne(lexOne("("), newToken(TokenKind.PAREN_L, 0, 1, 1, 1))
+    compareTokensOne(lexOne(")"), newToken(TokenKind.PAREN_R, 0, 1, 1, 1))
+    compareTokensOne(lexOne("..."), newToken(TokenKind.SPREAD, 0, 3, 1, 1))
+    compareTokensOne(lexOne(":"), newToken(TokenKind.COLON, 0, 1, 1, 1))
+    compareTokensOne(lexOne("="), newToken(TokenKind.EQUALS, 0, 1, 1, 1))
+    compareTokensOne(lexOne("@"), newToken(TokenKind.AT, 0, 1, 1, 1))
+    compareTokensOne(lexOne("["), newToken(TokenKind.BRACKET_L, 0, 1, 1, 1))
+    compareTokensOne(lexOne("]"), newToken(TokenKind.BRACKET_R, 0, 1, 1, 1))
+    compareTokensOne(lexOne("{"), newToken(TokenKind.BRACE_L, 0, 1, 1, 1))
+    compareTokensOne(lexOne("}"), newToken(TokenKind.BRACE_R, 0, 1, 1, 1))
+    compareTokensOne(lexOne("|"), newToken(TokenKind.PIPE, 0, 1, 1, 1))
 
   test "Lex reports useful unknown character error":
     assertSyntaxError("..", "Cannot parse the unexpected character '.'.")
@@ -338,7 +338,7 @@ suite "Describe Lexer":
     let source = newSource("a-b")
     var lex = newLexer(source)
     let firstToken = lex.advance()
-    compareTokensOne(firstToken, initToken(TokenKind.NAME, 0, 1, 1, 1, TokenSOF, "a"))
+    compareTokensOne(firstToken, newToken(TokenKind.NAME, 0, 1, 1, 1, TokenSOF, "a"))
     try:
       discard lex.advance()
     except ValueError as error:

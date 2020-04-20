@@ -6,10 +6,10 @@ import tables
 
 import nimutils/char_utils
 
-from ast import Token, initToken
-from source_location import Source
-from block_string import dedentBlockStringValue
-from token_kind import TokenKind
+import language/ast
+import language/source_location
+import language/block_string
+import language/token_kind
 
 
 const EscapedChars = {
@@ -111,7 +111,7 @@ proc newLexer*(source: Source): Lexer =
   ]#
   new(result)
   result.source = source
-  let startOfFileToken = initToken(TokenKind.SOF, 0, 0, 0, 0)
+  let startOfFileToken = newToken(TokenKind.SOF, 0, 0, 0, 0)
   result.lastToken = startOfFileToken
   result.token = startOfFileToken
   result.line = 1
@@ -170,7 +170,7 @@ proc readComment(self: Lexer, start: int, line: int, col: int, prev: Token): Tok
     if character < ' ' and character != '\t':
       break
   
-  return initToken(TokenKind.COMMENT, start, pos, line, col, prev, body[start + 1..<pos])
+  return newToken(TokenKind.COMMENT, start, pos, line, col, prev, body[start + 1..<pos])
 
 proc readName(self: Lexer, start: int, line: int, col: int, prev: Token): Token =
   #[
@@ -185,7 +185,7 @@ proc readName(self: Lexer, start: int, line: int, col: int, prev: Token): Token 
       break
     inc(pos)
   
-  return initToken(TokenKind.NAME, start, pos, line, col, prev, body[start..<pos])
+  return newToken(TokenKind.NAME, start, pos, line, col, prev, body[start..<pos])
 
 proc readDigits(self: Lexer, start: int, character: var char): int =
   #[
@@ -266,7 +266,7 @@ proc readNumber(self: Lexer, start: int, character: char, line: int, col: int, p
     finalTokenKind = TokenKind.FLOAT
   else:
     finalTokenKind = TokenKind.INT
-  return initToken(finalTokenKind, start, pos, line, col, prev, body[start..<pos])
+  return newToken(finalTokenKind, start, pos, line, col, prev, body[start..<pos])
 
 proc readBlockString(self: var Lexer, start: int, line: int, col: int, prev: Token): Token =
   #[
@@ -283,7 +283,7 @@ proc readBlockString(self: var Lexer, start: int, line: int, col: int, prev: Tok
     var character = body[pos]
     if character == '"' and pos + 2 < bodyLen and body[pos + 1..<pos + 3] == "\"\"":
       rawValue = rawValue & body[chunkStart..<pos]
-      return initToken(TokenKind.BLOCK_STRING, start, pos + 3, line, col, prev, dedentBlockStringValue(rawValue))
+      return newToken(TokenKind.BLOCK_STRING, start, pos + 3, line, col, prev, dedentBlockStringValue(rawValue))
     if character < ' ' and character notin {'\t', '\n', '\r'}:
       # TODO: Should be GraphQLSyntaxError
       raise newException(ValueError, &"Invalid character within String: {printChar(character)}.")
@@ -332,7 +332,7 @@ proc readString(self: Lexer, start: int, line: int, col: int, prev: Token): Toke
       break
     if character == '"':
       value.add(body[chunkStart..<pos])
-      return initToken(TokenKind.STRING, start, pos + 1, line, col, prev, join(value))
+      return newToken(TokenKind.STRING, start, pos + 1, line, col, prev, join(value))
     if character < ' ' and character != '\t':
       # TODO: Should be GraphQLSyntaxError
       raise newException(ValueError, &"Invalid character within String: {printChar(character)}.")
@@ -381,7 +381,7 @@ proc readToken*(self: var Lexer, prev: Token): Token =
   let col = 1 + pos - self.lineStart
 
   if pos >= bodyLen:
-    return initToken(TokenKind.EOF, bodyLen, bodyLen, line, col, prev)
+    return newToken(TokenKind.EOF, bodyLen, bodyLen, line, col, prev)
 
   var character = body[pos]
   let isToken = isTokenKind($character)
@@ -391,12 +391,12 @@ proc readToken*(self: var Lexer, prev: Token): Token =
 
   if kind:
     let parsedTokenKind = parseEnum[TokenKind]($character)
-    return initToken(parsedTokenKind, pos, pos + 1, line, col, prev)
+    return newToken(parsedTokenKind, pos, pos + 1, line, col, prev)
   elif character == '#':
     return self.readComment(pos, line, col, prev)
   elif character == '.':
     if pos + 2 < bodyLen and body[pos + 1] == '.' and body[pos + 2] == '.':
-      return initToken(TokenKind.SPREAD, pos, pos + 3, line, col, prev)
+      return newToken(TokenKind.SPREAD, pos, pos + 3, line, col, prev)
   elif IdentStartChars.contains(character):
     return self.readName(pos, line, col, prev)
   elif Digits.contains(character) or character == '-':

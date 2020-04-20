@@ -7,7 +7,6 @@ import language/directive_location
 import language/lexer
 import language/source_location
 import language/token_kind
-import error/graphql_error
 import error/syntax_error
 
 
@@ -243,12 +242,13 @@ proc loc(self: Parser, startToken: Token): Location =
     Used to identify the place in the source that created a given parsed object.
   ]#
   if not self.noLocation:
-    let endToken = self.lexer.lastToken
-    let source = self.lexer.source
-    return initLocation(startToken, endToken, source)
+    let 
+      endToken = self.lexer.lastToken
+      source = self.lexer.source
+    return newLocation(startToken, endToken, source)
   return nil
-   
-   
+
+
 proc peek(self: Parser, kind: TokenKind): bool =
   #[
     Determine if the next token is of a given kind
@@ -327,7 +327,7 @@ proc expectOptionalKeyword(self: Parser, value: string): bool =
   return false
 
 
-proc unexpected(self: Parser, atToken: Option[Token] = none(Token)): GraphQLError =
+proc unexpected(self: Parser, atToken: Option[Token] = none(Token)): GraphQLSyntaxError =
   #[
     Create an error when an unexpected lexed token is encountered.
   ]#
