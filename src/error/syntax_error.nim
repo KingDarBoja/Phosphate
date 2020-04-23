@@ -15,7 +15,7 @@ proc newGraphQLSyntaxError*(
 ): GraphQLSyntaxError =
   new(result)
   let parentError = newGraphQLError(
-    fmt"Syntax Error: {description}",
+    &"Syntax Error: {description}",
     source = some(source),
     positions = some(@[position]),
   )
@@ -29,3 +29,7 @@ proc newGraphQLSyntaxError*(
     originalError: parentError.originalError,
     extensions: parentError.extensions
   )
+
+
+proc `$`*(self: GraphQLSyntaxError): string =
+  result = printError(self)
