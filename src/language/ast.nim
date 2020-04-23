@@ -3,22 +3,20 @@ import source_location
 import token_kind
 
 type Token* = ref object
-  #[
+  ##[
     AST Token
 
     Represents a range of characters 
     represented by a lexical token within a Source.
-  ]#
+  ]##
   kind*: TokenKind ## the kind of token
   start*: int ## the character offset at which this Node begins
   `end`*: int ## the character offset at which this Node ends
   line*: int ## the 1-indexed line number on which this Token appears
   column*: int ## the 1-indexed column number at which this Token begins
   value*: string ## For non-punctuation tokens, represents the interpreted value of the token.
-  #[
-    Tokens exist as nodes in a double-linked-list amongst all tokens including
-    ignored tokens. <SOF> is always the first node and <EOF> the last.
-  ]#
+  ## Tokens exist as nodes in a double-linked-list amongst all tokens including
+  ## ignored tokens. <SOF> is always the first node and <EOF> the last.
   prev*: Token
   next*: Token
 
@@ -45,12 +43,12 @@ proc newToken*(
 
 
 type Location* = ref object
-  #[
+  ##[
     AST Location
 
     Contains a range of UTF-8 character offsets and token references that identify the
     region of the source from which the AST derived.
-  ]#
+  ]##
   start*: int ## character offset at which this Node begins
   `end`*: int ## character offset at which this Node ends
   startToken*: Token ## Token at which this Node begins
