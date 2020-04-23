@@ -32,9 +32,11 @@ proc getTokenDesc(token: Token): string =
   #[
     Describe a token as a string for debugging.
   ]#
-  let value = token.value
-  return getTokenKindDesc(token.kind) & (
-    if value.len != 0: fmt" '{value}'" else: ""
+  let
+    value = token.value
+    tokenDesc = getTokenKindDesc(token.kind)
+  return tokenDesc & (
+    if value.len > 0 or token.kind == TokenKind.STRING: fmt" '{value}'" else: ""
   )
 
 
@@ -139,9 +141,13 @@ proc parseDirectiveDefinition(self: Parser): DirectiveDefinitionNode
 proc parseDirectiveLocations(self: Parser): seq[NameNode]
 proc parseDirectiveLocation(self: Parser): NameNode
 
-# Emulate Python "Partial"
-let partialValueLiteral = proc(self: Parser): ValueNode = parseValueLiteral(self, true)
-let partialObjectField = proc(self: Parser): ObjectFieldNode = parseObjectField(self, true)
+## Emulate Python "Partial" by using closures described by Varriount 
+## on the devnotes doc.
+proc partialValueLiteral(self: Parser, isConst: bool): auto =
+  result = proc(): auto = return parseValueLiteral(self, isConst)
+
+proc partialObjectField(self: Parser, isConst: bool): auto =
+  result = proc(): auto = return parseObjectField(self, isConst)
 
 
 proc parse*(
@@ -295,12 +301,12 @@ proc expectOptionalToken(self: Parser, kind: TokenKind): Token =
 
 
 proc expectKeyword(self: Parser, value: string): GraphQLSyntaxError =
-  #[
+  ##[
     Expect the next token to be a given keyword.
 
     If the next token is a given keyword, advance the lexer.
     Otherwise, do not change the parser state and throw an error.
-  ]#
+  ]##
   let token = self.lexer.token
   if token.kind == TokenKind.NAME and token.value == value:
     discard self.lexer.advance()
@@ -308,7 +314,7 @@ proc expectKeyword(self: Parser, value: string): GraphQLSyntaxError =
     raise newGraphQLSyntaxError(
       self.lexer.source,
       token.start,
-      fmt"Expected {value}, found {getTokenDesc(token)}."
+      fmt"Expected '{value}', found {getTokenDesc(token)}."
     )
 
 
@@ -342,7 +348,7 @@ proc unexpected(self: Parser, atToken: Option[Token] = none(Token)): GraphQLSynt
 proc anyNode[T](
   self: Parser,
   openKind: TokenKind,
-  parseProc: proc(self: Parser): T,
+  parseProc: proc (): T,
   closeKind: TokenKind
 ): seq[T] =
   #[
@@ -355,7 +361,7 @@ proc anyNode[T](
   discard self.expectToken(openKind)
   var nodes: seq[T]
   while self.expectOptionalToken(closeKind).isNil:
-    nodes.add(self.parseProc())
+    nodes.add(parseProc())
   return nodes
 
 
@@ -365,14 +371,14 @@ proc optionalManyNode[T](
   parseProc: proc(self: Parser): T,
   closeKind: TokenKind
 ): seq[T] =
-  #[
+  ##[
     Fetch matching nodes, maybe none.
 
     Returns a list of parse nodes, determined by the `parse_fn`. It can be empty
     only if the open token is missing, otherwise it will always return a non-empty
     list that begins with a lex token of `open_kind` and ends with a lex token of
     `close_kind`. Advances the parser to the next lex token after the closing token.
-  ]#
+  ]##
   if not self.expectOptionalToken(openKind).isNil:
     var nodes: seq[T] = @[self.parseProc()]
     while self.expectOptionalToken(closeKind).isNil:
@@ -387,13 +393,13 @@ proc manyNode[T](
   parseProc: proc(self: Parser): T,
   closeKind: TokenKind
 ): seq[T] =
-  #[
+  ##[
     Fetch matching nodes, at least one.
 
     Returns a non-empty list of parse nodes, determined by the `parse_fn`.
     This list begins with a lex token of `open_kind` and ends with a lex token of
     `close_kind`. Advances the parser to the next lex token after the closing token.
-  ]#
+  ]##
   discard self.expectToken(openKind)
   var nodes: seq[T] = @[self.parseProc()]
   while self.expectOptionalToken(closeKind).isNil:
@@ -405,9 +411,9 @@ proc manyNode[T](
 
 
 proc parseName(self: Parser): NameNode =
-  #[
+  ##[
     Convert a name lex token into a name parse node.
-  ]#
+  ]##
   let token = self.expectToken(TokenKind.NAME)
   return NameNode(value: token.value)
 
@@ -416,9 +422,9 @@ proc parseName(self: Parser): NameNode =
 
 
 proc parseDocument(self: Parser): DocumentNode =
-  #[
+  ##[
     Document: Definition
-  ]#
+  ]##
   let start = self.lexer.token
   return DocumentNode(
     definitions: self.manyNode[:DefinitionNode](
@@ -429,11 +435,11 @@ proc parseDocument(self: Parser): DocumentNode =
 
 
 proc parseDefinition(self: Parser): DefinitionNode =
-  #[
+  ##[
     Definition: ExecutableDefinition or TypeSystemDefinition/Extension
 
     ExecutableDefinition: OperationDefinition or FragmentDefinition
-  ]#
+  ]##
   if self.peek(TokenKind.NAME):
     let methodName = self.lexer.token.value
     case methodName
@@ -461,9 +467,9 @@ proc parseDefinition(self: Parser): DefinitionNode =
 
 
 proc parseOperationDefinition(self: Parser): OperationDefinitionNode =
-  #[
+  ##[
     Operation Definition
-  ]#
+  ]##
   let start = self.lexer.token
   if self.peek(TokenKind.BRACE_L):
     return OperationDefinitionNode(
@@ -487,9 +493,9 @@ proc parseOperationDefinition(self: Parser): OperationDefinitionNode =
 
 
 proc parseOperationType(self: Parser): OperationTypeNode =
-  #[
+  ##[
     OperationType: one of query mutation subscription
-  ]#
+  ]##
   let operationToken = self.expectToken(TokenKind.NAME)
   try:
     return parseEnum[OperationTypeNode](operationToken.value)
@@ -509,14 +515,13 @@ proc parseVariableDefinitions(self: Parser): seq[VariableDefinitionNode] =
 
 
 proc parseVariableDefinition(self: Parser): VariableDefinitionNode =
-  #[
+  ##[
     VariableDefinition: Variable: Type DefaultValue? Directives[Const]?
-  ]#
+  ]##
   let start = self.lexer.token
-  let typeRef = if not self.expectToken(TokenKind.COLON).isNil: self.parseTypeReference() else: nil
   return VariableDefinitionNode(
     variable: self.parseVariable(),
-    `type`: typeRef,
+    `type`: if not self.expectToken(TokenKind.COLON).isNil: self.parseTypeReference() else: nil,
     defaultValue: if not self.expectOptionalToken(TokenKind.EQUALS).isNil: self.parseValueLiteral(true) else: nil,
     directives: self.parseDirectives(true),
     loc: self.loc(start)
@@ -524,9 +529,9 @@ proc parseVariableDefinition(self: Parser): VariableDefinitionNode =
 
 
 proc parseVariable(self: Parser): VariableNode =
-  #[
+  ##[
     Variable: $Name
-  ]#
+  ]##
   let start = self.lexer.token
   discard self.expectToken(TokenKind.DOLLAR)
   return VariableNode(
@@ -536,9 +541,9 @@ proc parseVariable(self: Parser): VariableNode =
 
 
 proc parseSelectionSet(self: Parser): SelectionSetNode =
-  #[
+  ##[
     SelectionSet: {Selection+}
-  ]#
+  ]##
   let start = self.lexer.token
   return SelectionSetNode(
     selections: self.manyNode[:SelectionNode](
@@ -551,16 +556,16 @@ proc parseSelectionSet(self: Parser): SelectionSetNode =
 
 
 proc parseSelection(self: Parser): SelectionNode =
-  #[
+  ##[
     Selection: Field or FragmentSpread or InlineFragment
-  ]#
+  ]##
   return if self.peek(TokenKind.SPREAD): self.parseFragment() else: self.parseField()
 
 
 proc parseField(self: Parser): FieldNode =
-  #[
+  ##[
     Field: Alias? Name Arguments? Directives? SelectionSet?
-  ]#
+  ]##
   let start = self.lexer.token
   let nameOrAlias = self.parseName()
   var alias: NameNode
@@ -582,9 +587,9 @@ proc parseField(self: Parser): FieldNode =
 
 
 proc parseArguments(self: Parser, isConst: bool): seq[ArgumentNode] =
-  #[
+  ##[
     Arguments[Const]: (Argument[?Const]+)
-  ]#
+  ]##
   let item = if isConst: parseConstArgument else: parseArgument
   return self.optionalManyNode[:ArgumentNode](
     TokenKind.PAREN_L,
@@ -593,9 +598,9 @@ proc parseArguments(self: Parser, isConst: bool): seq[ArgumentNode] =
   )
 
 proc parseArgument(self: Parser): ArgumentNode =
-  #[
+  ##[
     Argument: Name : Value
-  ]#
+  ]##
   let start = self.lexer.token
   let name = self.parseName()
 
@@ -608,9 +613,9 @@ proc parseArgument(self: Parser): ArgumentNode =
 
 
 proc parseConstArgument(self: Parser): ArgumentNode =
-  #[
+  ##[
     Argument[Const]: Name : Value[?Const]
-  ]#
+  ]##
   let start = self.lexer.token
   let value = if not self.expectToken(TokenKind.COLON).isNil: self.parseValueLiteral(true) else: nil 
   return ArgumentNode(
@@ -624,12 +629,12 @@ proc parseConstArgument(self: Parser): ArgumentNode =
 
 
 proc parseFragment(self: Parser): SelectionNode =
-  #[
+  ##[
     Corresponds to both FragmentSpread and InlineFragment in the spec.
 
     FragmentSpread: ... FragmentName Directives?
     InlineFragment: ... TypeCondition? Directives? SelectionSet
-  ]#
+  ]##
   let start = self.lexer.token
   discard self.expectToken(TokenKind.SPREAD)
 
@@ -651,9 +656,9 @@ proc parseFragment(self: Parser): SelectionNode =
 
 
 proc parseFragmentDefinition(self: Parser): FragmentDefinitionNode =
-  #[
+  ##[
     FragmentDefinition
-  ]#
+  ]##
   let start = self.lexer.token
   discard self.expectKeyword("fragment")
   ## Experimental support for defining variables within fragments changes
@@ -669,18 +674,18 @@ proc parseFragmentDefinition(self: Parser): FragmentDefinitionNode =
 
 
 proc parseFragmentName(self: Parser): NameNode =
-  #[
+  ##[
     FragmentName: Name but not `on`
-  ]#
+  ]##
   if self.lexer.token.value == "on":
     raise self.unexpected()
   return self.parseName()
 
 
 proc parseTypeCondition(self: Parser): NamedTypeNode =
-  #[
+  ##[
     TypeCondition: NamedType
-  ]#
+  ]##
   discard self.expectKeyword("on")
   return self.parseNamedType()
 
@@ -721,14 +726,14 @@ proc parseStringLiteral(self: Parser, isConst: bool = false): StringValueNode =
 
 
 proc parseList(self: Parser, isConst: bool): ListValueNode =
-  #[
+  ##[
     ListValue[Const]
-  ]#
+  ]##
   let start = self.lexer.token
   return ListValueNode(
     values: self.anyNode[:ValueNode](
       TokenKind.BRACKET_L,
-      partialValueLiteral,
+      partialValueLiteral(self, isConst),
       TokenKind.BRACKET_R
     ),
     loc: self.loc(start)
@@ -748,14 +753,14 @@ proc parseObjectField(self: Parser, isConst: bool): ObjectFieldNode =
 
 
 proc parseObject(self: Parser, isConst: bool): ObjectValueNode =
-  #[
+  ##[
     ObjectValue[Const]
-  ]#
+  ]##
   let start = self.lexer.token
   return ObjectValueNode(
     fields: self.anyNode[:ObjectFieldNode](
       TokenKind.BRACE_L,
-      partialObjectField,
+      partialObjectField(self, isConst),
       TokenKind.BRACE_R
     ),
     loc: self.loc(start)
@@ -805,9 +810,9 @@ proc parseVariableValue(self: Parser, isConst: bool = false): VariableNode =
 
 
 proc parseDirectives(self: Parser, isConst: bool): seq[DirectiveNode] =
-  #[
+  ##[
     Directives[Const]: Directive[?Const]+
-  ]#
+  ]##
   var directives: seq[DirectiveNode]
   while self.peek(TokenKind.AT):
     directives.add(self.parseDirective(isConst))
@@ -815,9 +820,9 @@ proc parseDirectives(self: Parser, isConst: bool): seq[DirectiveNode] =
 
 
 proc parseDirective(self: Parser, isConst: bool): DirectiveNode =
-  #[
+  ##[
     Directive[Const]: @ Name Arguments[?Const]?
-  ]#
+  ]##
   let start = self.lexer.token
   discard self.expectToken(TokenKind.AT)
   return DirectiveNode(
@@ -831,9 +836,9 @@ proc parseDirective(self: Parser, isConst: bool): DirectiveNode =
 
 
 proc parseTypeReference(self: Parser): TypeNode =
-  #[
+  ##[
     Type: NamedType or ListType or NonNullType
-  ]#
+  ]##
   let start = self.lexer.token
   var typeRef: TypeNode
   if not self.expectOptionalToken(TokenKind.BRACKET_L).isNil:
@@ -854,9 +859,9 @@ proc parseTypeReference(self: Parser): TypeNode =
     
 
 proc parseNamedType(self: Parser): NamedTypeNode =
-  #[
+  ##[
     NamedType: Name
-  ]#
+  ]##
   let start = self.lexer.token
   return NamedTypeNode(
     name: self.parseName(),
@@ -880,9 +885,9 @@ proc parseNamedType(self: Parser): NamedTypeNode =
 ## - InputObjectTypeDefinition
 
 proc parseTypeSystemDefinition(self: Parser): TypeSystemDefinitionNode =
-  #[
+  ##[
     Many definitions begin with a description and require a lookahead.
-  ]#
+  ]##
   let keywordToken = if self.peekDescription(): self.lexer.lookahead() else: self.lexer.token
   if keywordToken.kind == TokenKind.NAME:
     case keywordToken.value:
@@ -920,9 +925,9 @@ proc parseTypeSystemDefinition(self: Parser): TypeSystemDefinitionNode =
 ## - InputObjectTypeDefinition
 
 proc parseTypeSystemExtension(self: Parser): TypeSystemExtensionNode =
-  #[
+  ##[
     TypeSystemExtension
-  ]#
+  ]##
   let keywordToken = self.lexer.lookahead()
   if keywordToken.kind == TokenKind.NAME:
     case keywordToken.value
@@ -947,18 +952,18 @@ proc parseTypeSystemExtension(self: Parser): TypeSystemExtensionNode =
 
 
 proc parseDescription(self: Parser): StringValueNode =
-  #[
+  ##[
     Description: StringValue
-  ]#
+  ]##
   if self.peekDescription():
     return self.parseStringLiteral()
   return nil
 
 
 proc parseSchemaDefinition(self: Parser): SchemaDefinitionNode =
-  #[
+  ##[
     SchemaDefinition
-  ]#
+  ]##
   let start = self.lexer.token
   let description = self.parseDescription()
   discard self.expectKeyword("schema")
@@ -977,9 +982,9 @@ proc parseSchemaDefinition(self: Parser): SchemaDefinitionNode =
 
 
 proc parseOperationTypeDefinition(self: Parser): OperationTypeDefinitionNode =
-  #[
+  ##[
     OperationTypeDefinition: OperationType : NamedType
-  ]#
+  ]##
   let start = self.lexer.token
   let operation = self.parseOperationType()
   discard self.expectToken(TokenKind.COLON)
@@ -992,9 +997,9 @@ proc parseOperationTypeDefinition(self: Parser): OperationTypeDefinitionNode =
 
 
 proc parseScalarTypeDefinition(self: Parser): ScalarTypeDefinitionNode =
-  #[
+  ##[
     ScalarTypeDefinition: Description? scalar Name Directives[Const]?
-  ]#
+  ]##
   let start = self.lexer.token
   let description = self.parseDescription()
   discard self.expectKeyword("scalar")
@@ -1009,9 +1014,9 @@ proc parseScalarTypeDefinition(self: Parser): ScalarTypeDefinitionNode =
 
 
 proc parseObjectTypeDefinition(self: Parser): ObjectTypeDefinitionNode =
-  #[
+  ##[
     ObjectTypeDefinition
-  ]#
+  ]##
   let start = self.lexer.token
   let description = self.parseDescription()
   discard self.expectKeyword("type")
@@ -1031,9 +1036,9 @@ proc parseObjectTypeDefinition(self: Parser): ObjectTypeDefinitionNode =
 
 
 proc parseImplementsInterfaces(self: Parser): seq[NamedTypeNode] =
-  #[
+  ##[
     ImplementsInterfaces
-  ]#
+  ]##
   var types: seq[NamedTypeNode]
   if self.expectOptionalKeyword("implements"):
     # optional leading ampersand
@@ -1046,9 +1051,9 @@ proc parseImplementsInterfaces(self: Parser): seq[NamedTypeNode] =
 
 
 proc parseFieldsDefinition(self: Parser): seq[FieldDefinitionNode] =
-  #[
+  ##[
     FieldsDefinition: {FieldDefinition+}
-  ]#
+  ]##
   return self.optionalManyNode[:FieldDefinitionNode](
     TokenKind.BRACE_L,
     parseFieldDefinition,
@@ -1057,16 +1062,18 @@ proc parseFieldsDefinition(self: Parser): seq[FieldDefinitionNode] =
 
 
 proc parseFieldDefinition(self: Parser): FieldDefinitionNode =
-  #[
+  ##[
     FieldDefinition
-  ]#
-  let start = self.lexer.token
-  let description = self.parseDescription()
-  let name = self.parseName()
-  let args = self.parseArgumentDefs()
+  ]##
+  let
+    start = self.lexer.token
+    description = self.parseDescription()
+    name = self.parseName()
+    args = self.parseArgumentDefs()
   discard self.expectToken(TokenKind.COLON)
-  let typeRef = self.parseTypeReference()
-  let directives = self.parseDirectives(true)
+  let
+    typeRef = self.parseTypeReference()
+    directives = self.parseDirectives(true)
   return FieldDefinitionNode(
     description: description,
     name: name,
@@ -1078,9 +1085,9 @@ proc parseFieldDefinition(self: Parser): FieldDefinitionNode =
 
 
 proc parseArgumentDefs(self: Parser): seq[InputValueDefinitionNode] =
-  #[
+  ##[
     ArgumentsDefinition: (InputValueDefinition+)
-  ]#
+  ]##
   return self.optionalManyNode[:InputValueDefinitionNode](
     TokenKind.PAREN_L,
     parseInputValueDef,
@@ -1089,16 +1096,18 @@ proc parseArgumentDefs(self: Parser): seq[InputValueDefinitionNode] =
 
 
 proc parseInputValueDef(self: Parser): InputValueDefinitionNode =
-  #[
+  ##[
     InputValueDefinition
-  ]#
-  let start = self.lexer.token
-  let description = self.parseDescription()
-  let name = self.parseName()
+  ]##
+  let 
+    start = self.lexer.token
+    description = self.parseDescription()
+    name = self.parseName()
   discard self.expectToken(TokenKind.COLON)
-  let typeRef = self.parseTypeReference()
-  let defaultValue = if not self.expectOptionalToken(TokenKind.EQUALS).isNil: self.parseValueLiteral(true) else: nil
-  let directives = self.parseDirectives(true)
+  let
+    typeRef = self.parseTypeReference()
+    defaultValue = if not self.expectOptionalToken(TokenKind.EQUALS).isNil: self.parseValueLiteral(true) else: nil
+    directives = self.parseDirectives(true)
   return InputValueDefinitionNode(
     description: description,
     name: name,
@@ -1110,16 +1119,18 @@ proc parseInputValueDef(self: Parser): InputValueDefinitionNode =
 
 
 proc parseInterfaceTypeDefinition(self: Parser): InterfaceTypeDefinitionNode =
-  #[
+  ##[
     InterfaceTypeDefinition
-  ]#
-  let start = self.lexer.token
-  let description = self.parseDescription()
+  ]##
+  let
+    start = self.lexer.token
+    description = self.parseDescription()
   discard self.expectKeyword("interface")
-  let name = self.parseName()
-  let interfaces = self.parseImplementsInterfaces()
-  let directives = self.parseDirectives(true)
-  let fields = self.parseFieldsDefinition()
+  let
+    name = self.parseName()
+    interfaces = self.parseImplementsInterfaces()
+    directives = self.parseDirectives(true)
+    fields = self.parseFieldsDefinition()
   return InterfaceTypeDefinitionNode(
     description: description,
     name: name,
@@ -1131,15 +1142,17 @@ proc parseInterfaceTypeDefinition(self: Parser): InterfaceTypeDefinitionNode =
 
 
 proc parseUnionTypeDefinition(self: Parser): UnionTypeDefinitionNode =
-  #[
+  ##[
     UnionTypeDefinition
-  ]#
-  let start = self.lexer.token
-  let description = self.parseDescription()
+  ]##
+  let
+    start = self.lexer.token
+    description = self.parseDescription()
   discard self.expectKeyword("union")
-  let name = self.parseName()
-  let directives = self.parseDirectives(true)
-  let types = self.parseUnionMemberTypes()
+  let
+    name = self.parseName()
+    directives = self.parseDirectives(true)
+    types = self.parseUnionMemberTypes()
   return UnionTypeDefinitionNode(
     description: description,
     name: name,
@@ -1150,9 +1163,9 @@ proc parseUnionTypeDefinition(self: Parser): UnionTypeDefinitionNode =
 
 
 proc parseUnionMemberTypes(self: Parser): seq[NamedTypeNode] =
-  #[
+  ##[
     UnionMemberTypes
-  ]#
+  ]##
   var types: seq[NamedTypeNode]
   if not self.expectOptionalToken(TokenKind.EQUALS).isNil:
     # optional leading pipe
@@ -1165,15 +1178,17 @@ proc parseUnionMemberTypes(self: Parser): seq[NamedTypeNode] =
 
 
 proc parseEnumTypeDefinition(self: Parser): EnumTypeDefinitionNode =
-  #[
+  ##[
     UnionTypeDefinition
-  ]#
-  let start = self.lexer.token
-  let description = self.parseDescription()
+  ]##
+  let
+    start = self.lexer.token
+    description = self.parseDescription()
   discard self.expectKeyword("enum")
-  let name = self.parseName()
-  let directives = self.parseDirectives(true)
-  let values = self.parseEnumValuesDefinition()
+  let
+    name = self.parseName()
+    directives = self.parseDirectives(true)
+    values = self.parseEnumValuesDefinition()
   return EnumTypeDefinitionNode(
     description: description,
     name: name,
@@ -1184,9 +1199,9 @@ proc parseEnumTypeDefinition(self: Parser): EnumTypeDefinitionNode =
 
 
 proc parseEnumValuesDefinition(self: Parser): seq[EnumValueDefinitionNode] =
-  #[
+  ##[
     EnumValuesDefinition: {EnumValueDefinition+}
-  ]#
+  ]##
   return self.optionalManyNode[:EnumValueDefinitionNode](
     TokenKind.BRACE_L,
     parseEnumValueDefinition,
@@ -1195,13 +1210,14 @@ proc parseEnumValuesDefinition(self: Parser): seq[EnumValueDefinitionNode] =
 
 
 proc parseEnumValueDefinition(self: Parser): EnumValueDefinitionNode =
-  #[
+  ##[
     EnumValueDefinition: Description? EnumValue Directives[Const]?
-  ]#
-  let start = self.lexer.token
-  let description = self.parseDescription()
-  let name = self.parseName()
-  let directives = self.parseDirectives(true)
+  ]##
+  let
+    start = self.lexer.token
+    description = self.parseDescription()
+    name = self.parseName()
+    directives = self.parseDirectives(true)
   return EnumValueDefinitionNode(
     description: description,
     name: name,
@@ -1211,15 +1227,17 @@ proc parseEnumValueDefinition(self: Parser): EnumValueDefinitionNode =
 
 
 proc parseInputObjectTypeDefinition(self: Parser): InputObjectTypeDefinitionNode =
-  #[
+  ##[
     InputObjectTypeDefinition
-  ]#
-  let start = self.lexer.token
-  let description = self.parseDescription()
+  ]##
+  let
+    start = self.lexer.token
+    description = self.parseDescription()
   discard self.expectKeyword("input")
-  let name = self.parseName()
-  let directives = self.parseDirectives(true)
-  let fields = self.parseInputFieldsDefinition()
+  let
+    name = self.parseName()
+    directives = self.parseDirectives(true)
+    fields = self.parseInputFieldsDefinition()
   return InputObjectTypeDefinitionNode(
     description: description,
     name: name,
@@ -1230,9 +1248,9 @@ proc parseInputObjectTypeDefinition(self: Parser): InputObjectTypeDefinitionNode
 
 
 proc parseInputFieldsDefinition(self: Parser): seq[InputValueDefinitionNode] =
-  #[
+  ##[
     InputFieldsDefinition: {InputValueDefinition+}
-  ]#
+  ]##
   return self.optionalManyNode[:InputValueDefinitionNode](
     TokenKind.BRACE_L,
     parseInputValueDef,
@@ -1241,9 +1259,9 @@ proc parseInputFieldsDefinition(self: Parser): seq[InputValueDefinitionNode] =
 
 
 proc parseSchemaExtension(self: Parser): SchemaExtensionNode =
-  #[
+  ##[
     SchemaExtension
-  ]#
+  ]##
   let start = self.lexer.token
   discard self.expectKeyword("extend")
   discard self.expectKeyword("schema")
@@ -1263,9 +1281,9 @@ proc parseSchemaExtension(self: Parser): SchemaExtensionNode =
 
 
 proc parseScalarTypeExtension(self: Parser): ScalarTypeExtensionNode =
-  #[
+  ##[
     ScalarTypeExtension
-  ]#
+  ]##
   let start = self.lexer.token
   discard self.expectKeyword("extends")
   discard self.expectKeyword("scalar")
@@ -1281,16 +1299,17 @@ proc parseScalarTypeExtension(self: Parser): ScalarTypeExtensionNode =
 
 
 proc parseObjectTypeExtension(self: Parser): ObjectTypeExtensionNode =
-  #[
+  ##[
     ObjectTypeExtension
-  ]#
+  ]##
   let start = self.lexer.token
   discard self.expectKeyword("extend")
   discard self.expectKeyword("type")
-  let name = self.parseName()
-  let interfaces = self.parseImplementsInterfaces()
-  let directives = self.parseDirectives(true)
-  let fields = self.parseFieldsDefinition()
+  let
+    name = self.parseName()
+    interfaces = self.parseImplementsInterfaces()
+    directives = self.parseDirectives(true)
+    fields = self.parseFieldsDefinition()
   if (interfaces.len == 0 or directives.len == 0 or fields.len == 0):
     raise self.unexpected()
   return ObjectTypeExtensionNode(
@@ -1303,16 +1322,17 @@ proc parseObjectTypeExtension(self: Parser): ObjectTypeExtensionNode =
 
 
 proc parseInterfaceTypeExtension(self: Parser): InterfaceTypeExtensionNode =
-  #[
+  ##[
     InterfaceTypeExtension
-  ]#
+  ]##
   let start = self.lexer.token
   discard self.expectKeyword("extend")
   discard self.expectKeyword("interface")
-  let name = self.parseName()
-  let interfaces = self.parseImplementsInterfaces()
-  let directives = self.parseDirectives(true)
-  let fields = self.parseFieldsDefinition()
+  let
+    name = self.parseName()
+    interfaces = self.parseImplementsInterfaces()
+    directives = self.parseDirectives(true)
+    fields = self.parseFieldsDefinition()
   if (interfaces.len == 0 or directives.len == 0 or fields.len == 0):
     raise self.unexpected()
   return InterfaceTypeExtensionNode(
@@ -1325,15 +1345,16 @@ proc parseInterfaceTypeExtension(self: Parser): InterfaceTypeExtensionNode =
 
 
 proc parseUnionTypeExtension(self: Parser): UnionTypeExtensionNode =
-  #[
+  ##[
     UnionTypeExtension
-  ]#
+  ]##
   let start = self.lexer.token
   discard self.expectKeyword("extend")
   discard self.expectKeyword("union")
-  let name = self.parseName()
-  let directives = self.parseDirectives(true)
-  let types = self.parseUnionMemberTypes()
+  let
+    name = self.parseName()
+    directives = self.parseDirectives(true)
+    types = self.parseUnionMemberTypes()
   if (directives.len == 0 or types.len == 0):
     raise self.unexpected()
   return UnionTypeExtensionNode(
@@ -1345,15 +1366,16 @@ proc parseUnionTypeExtension(self: Parser): UnionTypeExtensionNode =
 
 
 proc parseEnumTypeExtension(self: Parser): EnumTypeExtensionNode =
-  #[
+  ##[
     EnumTypeExtension
-  ]#
+  ]##
   let start = self.lexer.token
   discard self.expectKeyword("extend")
   discard self.expectKeyword("enum")
-  let name = self.parseName()
-  let directives = self.parseDirectives(true)
-  let values = self.parseEnumValuesDefinition()
+  let
+    name = self.parseName()
+    directives = self.parseDirectives(true)
+    values = self.parseEnumValuesDefinition()
   if (directives.len == 0 or values.len == 0):
     raise self.unexpected()
   return EnumTypeExtensionNode(
@@ -1365,15 +1387,16 @@ proc parseEnumTypeExtension(self: Parser): EnumTypeExtensionNode =
 
 
 proc parseInputObjectTypeExtension(self: Parser): InputObjectTypeExtensionNode =
-  #[
+  ##[
     InputObjectTypeExtension
-  ]#
+  ]##
   let start = self.lexer.token
   discard self.expectKeyword("extend")
   discard self.expectKeyword("input")
-  let name = self.parseName()
-  let directives = self.parseDirectives(true)
-  let fields = self.parseInputFieldsDefinition()
+  let
+    name = self.parseName()
+    directives = self.parseDirectives(true)
+    fields = self.parseInputFieldsDefinition()
   if (directives.len == 0 or fields.len == 0):
     raise self.unexpected()
   return InputObjectTypeExtensionNode(
@@ -1385,16 +1408,18 @@ proc parseInputObjectTypeExtension(self: Parser): InputObjectTypeExtensionNode =
 
 
 proc parseDirectiveDefinition(self: Parser): DirectiveDefinitionNode =
-  #[
+  ##[
     DirectiveDefinition
-  ]#
-  let start = self.lexer.token
-  let description = self.parseDescription()
+  ]##
+  let
+    start = self.lexer.token
+    description = self.parseDescription()
   discard self.expectKeyword("directive")
   discard self.expectToken(TokenKind.AT)
-  let name = self.parseName()
-  let args = self.parseArgumentDefs()
-  let repeatable = self.expectOptionalKeyword("repeatable")
+  let 
+    name = self.parseName()
+    args = self.parseArgumentDefs()
+    repeatable = self.expectOptionalKeyword("repeatable")
   discard self.expectKeyword("on")
   let locations = self.parseDirectiveLocations()
   return DirectiveDefinitionNode(
@@ -1408,9 +1433,9 @@ proc parseDirectiveDefinition(self: Parser): DirectiveDefinitionNode =
 
 
 proc parseDirectiveLocations(self: Parser): seq[NameNode] =
-  #[
+  ##[
     DirectiveLocations
-  ]#
+  ]##
   # optional leading pipe
   discard self.expectOptionalToken(TokenKind.PIPE)
   var locations: seq[NameNode]
@@ -1422,9 +1447,9 @@ proc parseDirectiveLocations(self: Parser): seq[NameNode] =
 
 
 proc parseDirectiveLocation(self: Parser): NameNode =
-  #[
+  ##[
     DirectiveLocation
-  ]#
+  ]##
   let start = self.lexer.token
   let name = self.parseName()
   if isDirectiveLocation(name.value):
