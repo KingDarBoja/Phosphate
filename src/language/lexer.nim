@@ -36,11 +36,11 @@ proc isEscapedChar(s: char): bool =
   return s in EscapedChars
 
 proc printChar(c: char): string =
-  #[
+  ##[
     Return the character as string by using the `repr`  operator
     instead of `$` (stringify) as it yields a different string representation 
     (with enclosing quotes).
-  ]#
+  ]##
   let nc = option(c)
   if not nc.isNone:
     return repr(nc.get())
@@ -54,7 +54,7 @@ proc isNameStart(c: char): bool =
   return IdentStartChars.contains(c)
 
 proc unicodeCharCode(s: string): int =
-  #[
+  ##[
     Convert unicode string to integers.
 
     Converts four hexadecimal chars to the integer that the string represents.
@@ -66,64 +66,72 @@ proc unicodeCharCode(s: string): int =
     This is implemented by noting that strutils fromHex proc raises
     a ValueError if `s` is not a valid hex integer. Capture the error
     and return -1 instead.
-  ]#
+  ]##
   var intValue: int
   try:
+    # TODO: Check this thing, I think I got it wrong.
     intValue = fromHex[int](s)
   except ValueError:
     intValue = -1
   return intValue
 
+
 proc unexpectedCharacterMessage(c: char): string =
-  #[
+  ##[
     Report a message that an unexpected character was encountered.
-  ]#
+  ]##
   if c < ' ' and c notin "\t\n\r":
       return &"Cannot contain the invalid character {printChar(c)}."
   if c == '\'':
       return "Unexpected single quote character ('), did you mean to use a double quote (\")?"
   return &"Cannot parse the unexpected character {printChar(c)}."
 
+
 proc isPunctuatorTokenKind*(kind: TokenKind): bool =
-  #[
+  ##[
     Check whether the given token kind corresponds to a punctuator.
 
     For internal use only.
-  ]#
+  ]##
   return kind in PunctuactionTokenKind
 
+
 type Lexer* = ref object
-  #[
+  ##[
     A Lexer is a stateful stream generator in that every time it is advanced, it returns
     the next token in the Source. Assuming the source lexes, the final Token emitted by
     the lexer will be of kind EOF, after which the lexer will repeatedly return the same
     EOF token whenever called.
-  ]#
+  ]##
   source*: Source
   lastToken*: Token ## The previously focused non-ignored token.
   token*: Token ## The currently focused non-ignored token.
   line*: int ## The (1-indexed) line containing the current token.
   lineStart*: int ## The character offset at which the current line begins.
 
+
 proc newLexer*(source: Source): Lexer =
-  #[
+  ##[
     Given a Source object, creates a Lexer for that source.
-  ]#
+  ]##
   new(result)
-  result.source = source
   let startOfFileToken = newToken(TokenKind.SOF, 0, 0, 0, 0)
-  result.lastToken = startOfFileToken
-  result.token = startOfFileToken
-  result.line = 1
-  result.lineStart = 0
+  result = Lexer(
+    source: source,
+    lastToken: startOfFileToken,
+    token: startOfFileToken,
+    line: 1,
+    lineStart: 0,
+  )
+
 
 proc positionAfterWhitespace*(self: var Lexer, body: string, startPosition: int): int =
-  #[
+  ##[
     Go to next position after a whitespace.
 
     Reads from body starting at start_position until it finds a non-whitespace
     character, then returns the position of that character for lexing.
-  ]#
+  ]##
   let bodyLen = body.len
   var pos = startPosition
   while pos < bodyLen:
@@ -155,9 +163,9 @@ proc positionAfterWhitespace*(self: var Lexer, body: string, startPosition: int)
   return pos
 
 proc readComment(self: Lexer, start: int, line: int, col: int, prev: Token): Token =
-  #[
+  ##[
     Read a comment token from the source file.
-  ]#
+  ]##
   let body = self.source.body
   let bodyLen = body.len
 
@@ -173,9 +181,9 @@ proc readComment(self: Lexer, start: int, line: int, col: int, prev: Token): Tok
   return newToken(TokenKind.COMMENT, start, pos, line, col, prev, body[start + 1..<pos])
 
 proc readName(self: Lexer, start: int, line: int, col: int, prev: Token): Token =
-  #[
+  ##[
     Read an alphanumeric + underscore name from the source.
-  ]#
+  ]##
   let body = self.source.body
   let bodyLen = body.len
   var pos = start + 1
@@ -206,12 +214,13 @@ proc readDigits(self: Lexer, start: int, character: var char): int =
     raise newException(ValueError, &"Invalid number, expected digit but got: {printChar(character)}.")
   return pos
 
+
 proc readNumber(self: Lexer, start: int, character: char, line: int, col: int, prev: Token): Token =
-  #[
+  ##[
     Reads a number token from the source file.
     
     Either a float or an int depending on whether a decimal point appears.
-  ]#
+  ]##
   let source = self.source
   let body = source.body
   var pos = start
@@ -269,9 +278,9 @@ proc readNumber(self: Lexer, start: int, character: char, line: int, col: int, p
   return newToken(finalTokenKind, start, pos, line, col, prev, body[start..<pos])
 
 proc readBlockString(self: var Lexer, start: int, line: int, col: int, prev: Token): Token =
-  #[
+  ##[
     Reads a block string token from the source file.
-  ]#
+  ]##
   let source = self.source
   let body = source.body
   let bodyLen = body.len
@@ -316,9 +325,9 @@ proc readBlockString(self: var Lexer, start: int, line: int, col: int, prev: Tok
   raise newException(ValueError, "Unterminated string.")
 
 proc readString(self: Lexer, start: int, line: int, col: int, prev: Token): Token =
-  #[
+  ##[
     Read a string token from the source file.
-  ]#
+  ]##
   let source = self.source
   let body = source.body
   let bodyLen = body.len
@@ -345,8 +354,8 @@ proc readString(self: Lexer, start: int, line: int, col: int, prev: Token): Toke
       if isEscaped:
         let escapedValue = EscapedChars.getOrDefault(character)
         value.add($escapedValue)
-      elif character == 'u' and pos + 4 < bodyLen:
-        let code = unicodeCharCode(body[pos + 1..<pos + 5])
+      elif character == 'u' and pos + 4 <= bodyLen:
+        let code = unicodeCharCode(body[pos + 1 ..< pos + 5])
         if code < 0:
           var escape = repr(body[pos..<pos + 5])
           escape = escape[0] & "\\" & escape[1..^1]
@@ -365,13 +374,13 @@ proc readString(self: Lexer, start: int, line: int, col: int, prev: Token): Toke
   raise newException(ValueError, "Unterminated string.")
 
 proc readToken*(self: var Lexer, prev: Token): Token =
-  #[
+  ##[
     Get the next token from the source starting at the given position.
 
     This skips over whitespace until it finds the next lexable token, then lexes
     punctuators immediately or calls the appropriate helper function for more
     complicated tokens.
-  ]#
+  ]##
   let source = self.source
   let body = source.body
   let bodyLen = body.len
@@ -411,10 +420,10 @@ proc readToken*(self: var Lexer, prev: Token): Token =
   raise newException(ValueError, unexpectedCharacterMessage(character))
 
 proc lookahead*(self: var Lexer): Token =
-  #[
+  ##[
     Look ahead and return the next non-ignored token, 
     but do not change state.
-  ]#
+  ]##
   var token = self.token
   if token.kind != TokenKind.EOF:
     while true:
@@ -426,9 +435,9 @@ proc lookahead*(self: var Lexer): Token =
   return token
 
 proc advance*(self: var Lexer): Token =
-  #[
+  ##[
     Advance the token stream to the next non-ignored token.
-  ]#
+  ]##
   self.lastToken = self.token
   self.token = self.lookahead()
   return self.token
