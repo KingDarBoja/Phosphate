@@ -1,8 +1,5 @@
 ## Lexer Module
-import strformat
-import strutils
-import options
-import tables
+import strformat, strutils, options, tables, unicode
 
 import nimutils/char_utils
 
@@ -162,12 +159,14 @@ proc positionAfterWhitespace*(self: var Lexer, body: string, startPosition: int)
       break
   return pos
 
+
 proc readComment(self: Lexer, start: int, line: int, col: int, prev: Token): Token =
   ##[
     Read a comment token from the source file.
   ]##
-  let body = self.source.body
-  let bodyLen = body.len
+  let
+    body = self.source.body
+    bodyLen = body.len
 
   var pos = start
   while true:
@@ -180,12 +179,14 @@ proc readComment(self: Lexer, start: int, line: int, col: int, prev: Token): Tok
   
   return newToken(TokenKind.COMMENT, start, pos, line, col, prev, body[start + 1..<pos])
 
+
 proc readName(self: Lexer, start: int, line: int, col: int, prev: Token): Token =
   ##[
     Read an alphanumeric + underscore name from the source.
   ]##
-  let body = self.source.body
-  let bodyLen = body.len
+  let
+    body = self.source.body
+    bodyLen = body.len
   var pos = start + 1
   while pos < bodyLen:
     let character = body[pos]
@@ -195,13 +196,15 @@ proc readName(self: Lexer, start: int, line: int, col: int, prev: Token): Token 
   
   return newToken(TokenKind.NAME, start, pos, line, col, prev, body[start..<pos])
 
+
 proc readDigits(self: Lexer, start: int, character: var char): int =
   #[
     Return the new position in the source after reading digits.
   ]#
-  let source = self.source
-  let body = source.body
-  let bodyLen = body.len
+  let
+    source = self.source
+    body = source.body
+    bodyLen = body.len
   var pos = start
   while Digits.contains(character):
     inc(pos)
@@ -221,12 +224,13 @@ proc readNumber(self: Lexer, start: int, character: char, line: int, col: int, p
     
     Either a float or an int depending on whether a decimal point appears.
   ]##
-  let source = self.source
-  let body = source.body
-  var pos = start
-  var isFloat = false
-
-  var newChar = option(character)
+  let
+    source = self.source
+    body = source.body
+  var
+    pos = start
+    isFloat = false
+    newChar = option(character)
   if not newChar.isNone and newChar.get() == '-':
     inc(pos)
     newChar = getCharacter(body, pos)
@@ -277,6 +281,7 @@ proc readNumber(self: Lexer, start: int, character: char, line: int, col: int, p
     finalTokenKind = TokenKind.INT
   return newToken(finalTokenKind, start, pos, line, col, prev, body[start..<pos])
 
+
 proc readBlockString(self: var Lexer, start: int, line: int, col: int, prev: Token): Token =
   ##[
     Reads a block string token from the source file.
@@ -323,6 +328,7 @@ proc readBlockString(self: var Lexer, start: int, line: int, col: int, prev: Tok
   
   # TODO: Should be GraphQLSyntaxError
   raise newException(ValueError, "Unterminated string.")
+
 
 proc readString(self: Lexer, start: int, line: int, col: int, prev: Token): Token =
   ##[
@@ -373,6 +379,7 @@ proc readString(self: Lexer, start: int, line: int, col: int, prev: Token): Toke
   # TODO: Should be GraphQLSyntaxError
   raise newException(ValueError, "Unterminated string.")
 
+
 proc readToken*(self: var Lexer, prev: Token): Token =
   ##[
     Get the next token from the source starting at the given position.
@@ -381,20 +388,22 @@ proc readToken*(self: var Lexer, prev: Token): Token =
     punctuators immediately or calls the appropriate helper function for more
     complicated tokens.
   ]##
-  let source = self.source
-  let body = source.body
-  let bodyLen = body.len
-
-  let pos = self.positionAfterWhitespace(body, prev.`end`)
-  let line = self.line
-  let col = 1 + pos - self.lineStart
+  let
+    source = self.source
+    body = source.body
+    bodyLen = body.len
+    pos = self.positionAfterWhitespace(body, prev.`end`)
+    line = self.line
+    col = 1 + pos - self.lineStart
 
   if pos >= bodyLen:
     return newToken(TokenKind.EOF, bodyLen, bodyLen, line, col, prev)
 
-  var character = body[pos]
+  var
+    character = body[pos]
+    kind: bool = false
   let isToken = isTokenKind($character)
-  var kind: bool = false
+
   if isToken:
     kind = isPunctuatorTokenKind(parseEnum[TokenKind]($character))
 
@@ -418,6 +427,7 @@ proc readToken*(self: var Lexer, prev: Token): Token =
     return self.readString(pos, line, col, prev)
   # TODO: Should be GraphQLSyntaxError
   raise newException(ValueError, unexpectedCharacterMessage(character))
+
 
 proc lookahead*(self: var Lexer): Token =
   ##[
