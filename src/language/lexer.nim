@@ -1,7 +1,5 @@
 ## Lexer Module
-import strformat, strutils, options, tables, unicode
-
-import nimutils/char_utils
+import strformat, strutils, options, tables, unicode, unicodeplus
 
 import language/ast
 import language/source_location
@@ -9,18 +7,42 @@ import language/block_string
 import language/token_kind
 
 
+# const EscapedChars = {
+#     '"': '"',
+#     '/': '/',
+#     '\\': '\\',
+#     'b': '\b',
+#     'f': '\f',
+#     'n': '\n',
+#     'r': '\r',
+#     't': '\t'
+# }.toTable
+
 const EscapedChars = {
-    '"': '"',
-    '/': '/',
-    '\\': '\\',
-    'b': '\b',
-    'f': '\f',
-    'n': '\n',
-    'r': '\r',
-    't': '\t'
+    Rune(0x0022): Rune(0x0022),
+    Rune(0x002F): Rune(0x002F),
+    Rune(0x005C): Rune(0x005C),
+    Rune(0x0062): Rune(0x0008),
+    Rune(0x0066): Rune(0x000C),
+    Rune(0x006E): Rune(0x000A),
+    Rune(0x0072): Rune(0x000D),
+    Rune(0x0074): Rune(0x0009),
 }.toTable
 
 const PunctuactionTokenKind = {TokenKind.BANG..TokenKind.BRACE_R}
+const AlphaAscii = {'a'.ord .. 'z'.ord, 'A'.ord .. 'Z'.ord}
+const DigitAscii = {'0'.ord .. '9'.ord}
+
+
+proc getCharacter*(s: seq[Rune], pos: int): Option[Rune] =
+  #[
+    Return the character at the specified position or `None` 
+    option which represents an empty value
+  ]#
+  if pos < s.len:
+    return option(s[pos])
+  return none(Rune)
+
 
 proc isTokenKind(s: string): bool =
   try:
@@ -29,28 +51,42 @@ proc isTokenKind(s: string): bool =
   except ValueError:
     return false
 
-proc isEscapedChar(s: char): bool =
+
+proc isEscapedChar(s: Rune): bool =
   return s in EscapedChars
 
-proc printChar(c: char): string =
+
+proc printChar(c: Rune): string =
   ##[
-    Return the character as string by using the `repr`  operator
+    Return the character as string by using the `repr` operator
     instead of `$` (stringify) as it yields a different string representation 
     (with enclosing quotes).
   ]##
-  let nc = option(c)
-  if not nc.isNone:
-    return repr(nc.get())
+  if unicodeplus.isPrintable(c):
+    return c.toUTF8()
   else:
-    return $TokenKind.EOF
+    return fmt"\u{c.int.toHex(4)}"
 
-proc isNameStart(c: char): bool =
-  #[
-    Check whether char is an underscore or a plain ASCII letter
-  ]#
-  return IdentStartChars.contains(c)
 
-proc unicodeCharCode(s: string): int =
+proc isAlphaAscii(c: Rune): bool =
+  ##[
+    Check whether character is plain ASCII letter.
+  ]##
+  return c.int in AlphaAscii
+
+
+proc isDigitAscii(c: Rune): bool =
+  return c.int in DigitAscii
+
+
+proc isNameStart(c: Rune): bool =
+  ##[
+    Check whether character is an underscore or a plain ASCII letter
+  ]##
+  return c.isAlphaAscii or c == Rune(0x005F)
+
+
+proc unicodeCharCode(a: Rune, b: Rune, c: Rune, d: Rune): int =
   ##[
     Convert unicode string to integers.
 
@@ -64,24 +100,20 @@ proc unicodeCharCode(s: string): int =
     a ValueError if `s` is not a valid hex integer. Capture the error
     and return -1 instead.
   ]##
-  var intValue: int
-  try:
-    # TODO: Check this thing, I think I got it wrong.
-    intValue = fromHex[int](s)
-  except ValueError:
-    intValue = -1
-  return intValue
+  return (a.int shl 12) or (b.int shl 8) or (c.int shl 4) or d.int
 
 
-proc unexpectedCharacterMessage(c: char): string =
+proc unexpectedCharacterMessage(c: Rune): string =
   ##[
     Report a message that an unexpected character was encountered.
   ]##
-  if c < ' ' and c notin "\t\n\r":
-      return &"Cannot contain the invalid character {printChar(c)}."
-  if c == '\'':
-      return "Unexpected single quote character ('), did you mean to use a double quote (\")?"
-  return &"Cannot parse the unexpected character {printChar(c)}."
+  # if c < ' ' and c notin "\t\n\r":
+  if c.int < 32 and c notin @[Rune(0x0009), Rune(0x000A), Rune(0x000D)]:
+    return &"Cannot contain the invalid character '{printChar(c)}'."
+  # Check if it a single quote / apostrophe character (') 
+  if c == Rune(0x0027):
+    return "Unexpected single quote character ('), did you mean to use a double quote (\")?"
+  return &"Cannot parse the unexpected character '{printChar(c)}'."
 
 
 proc isPunctuatorTokenKind*(kind: TokenKind): bool =
@@ -122,7 +154,7 @@ proc newLexer*(source: Source): Lexer =
   )
 
 
-proc positionAfterWhitespace*(self: var Lexer, body: string, startPosition: int): int =
+proc positionAfterWhitespace*(self: var Lexer, body: seq[Rune], startPosition: int): int =
   ##[
     Go to next position after a whitespace.
 
@@ -133,23 +165,17 @@ proc positionAfterWhitespace*(self: var Lexer, body: string, startPosition: int)
   var pos = startPosition
   while pos < bodyLen:
     let character = body[pos]
-    # Check if space, tab, comma
-    if character in {' ', '\t', ','}:
-      inc(pos, 1)
-    elif (
-      # Check if byte order mark (BOM)
-      (bodyLen - pos) >= 3 and 
-      body[pos] == '\xEF' and 
-      body[pos + 1] == '\xBB' and 
-      body[pos + 2] == '\xBF'
-    ):
-      inc(pos, 3)
-    elif character == '\n':
+    # Check if space, horizontal tab, comma or byte order mark (BOM)
+    if character in [Rune(0x0020), Rune(0x0009), Rune(0x002C), Rune(0xFEFF)]:
+      inc(pos)
+    # Check if line feed (LF)
+    elif character == Rune(0x000A):
       inc(pos)
       inc(self.line)
       self.lineStart = pos
-    elif character == '\r':
-      if body[pos + 1] == '\n':
+    # Check if CR+LF
+    elif character == Rune(0x000D):
+      if body[pos + 1] == Rune(0x000A):
         inc(pos, 2)
       else:
         inc(pos)
@@ -165,7 +191,7 @@ proc readComment(self: Lexer, start: int, line: int, col: int, prev: Token): Tok
     Read a comment token from the source file.
   ]##
   let
-    body = self.source.body
+    body = self.source.body.toRunes()
     bodyLen = body.len
 
   var pos = start
@@ -174,10 +200,10 @@ proc readComment(self: Lexer, start: int, line: int, col: int, prev: Token): Tok
     if pos >= bodyLen:
       break;
     let character = body[pos]
-    if character < ' ' and character != '\t':
+    if not unicodeplus.isPrintable(character):
       break
-  
-  return newToken(TokenKind.COMMENT, start, pos, line, col, prev, body[start + 1..<pos])
+
+  return newToken(TokenKind.COMMENT, start, pos, line, col, prev, $(body[start + 1 ..< pos]))
 
 
 proc readName(self: Lexer, start: int, line: int, col: int, prev: Token): Token =
@@ -185,28 +211,32 @@ proc readName(self: Lexer, start: int, line: int, col: int, prev: Token): Token 
     Read an alphanumeric + underscore name from the source.
   ]##
   let
-    body = self.source.body
+    body = self.source.body.toRunes()
     bodyLen = body.len
   var pos = start + 1
+  
   while pos < bodyLen:
     let character = body[pos]
-    if not IdentChars.contains(character):
+    if not (
+      character.isAlphaAscii or 
+      character.isDigitAscii or
+      character == Rune(0x005F)
+    ):
       break
     inc(pos)
   
-  return newToken(TokenKind.NAME, start, pos, line, col, prev, body[start..<pos])
+  return newToken(TokenKind.NAME, start, pos, line, col, prev, $(body[start ..< pos]))
 
 
-proc readDigits(self: Lexer, start: int, character: var char): int =
+proc readDigits(self: Lexer, start: int, character: var Rune): int =
   #[
     Return the new position in the source after reading digits.
   ]#
   let
-    source = self.source
-    body = source.body
+    body = self.source.body.toRunes()
     bodyLen = body.len
   var pos = start
-  while Digits.contains(character):
+  while character.isDigitAscii:
     inc(pos)
     if pos < bodyLen:
       character = body[pos]
@@ -214,41 +244,42 @@ proc readDigits(self: Lexer, start: int, character: var char): int =
       break
   if pos == start:
     # TODO: Should be GraphQLSyntaxError
-    raise newException(ValueError, &"Invalid number, expected digit but got: {printChar(character)}.")
+    raise newException(ValueError, &"Invalid number, expected digit but got: '{printChar(character)}'.")
   return pos
 
 
-proc readNumber(self: Lexer, start: int, character: char, line: int, col: int, prev: Token): Token =
+proc readNumber(self: Lexer, start: int, character: Rune, line: int, col: int, prev: Token): Token =
   ##[
     Reads a number token from the source file.
     
     Either a float or an int depending on whether a decimal point appears.
   ]##
   let
-    source = self.source
-    body = source.body
+    body = self.source.body.toRunes()
   var
     pos = start
     isFloat = false
     newChar = option(character)
-  if not newChar.isNone and newChar.get() == '-':
-    inc(pos)
-    newChar = getCharacter(body, pos)
 
-  if not newChar.isNone and newChar.get() == '0':
+  # Check if hyphen-minus character (-)
+  if not newChar.isNone and newChar.get() == Rune(0x002D):
     inc(pos)
     newChar = getCharacter(body, pos)
-    # TODO: Use Digits const from strutils
-    if not newChar.isNone and Digits.contains(newChar.get()):
+  # Check if digit zero (0)
+  if not newChar.isNone and newChar.get() == Rune(0x0030):
+    inc(pos)
+    newChar = getCharacter(body, pos)
+    if not newChar.isNone and isDigitAscii(newChar.get()):
       # TODO: Should be GraphQLSyntaxError
-      raise newException(ValueError, &"Invalid number, unexpected digit after 0: {printChar(newChar.get())}.")
+      raise newException(ValueError, &"Invalid number, unexpected digit after 0: '{printChar(newChar.get())}'.")
   elif not newChar.isNone:
     pos = self.readDigits(pos, newChar.get())
     newChar = getCharacter(body, pos)
   # else:
   #   newChar = getCharacter(body, pos + 1)
 
-  if not newChar.isNone and newChar.get() == '.':
+  # Check if dot character (.)
+  if not newChar.isNone and newChar.get() == Rune(0x002E):
     isFloat = true
     inc(pos)
     newChar = getCharacter(body, pos)
@@ -256,11 +287,13 @@ proc readNumber(self: Lexer, start: int, character: char, line: int, col: int, p
       pos = self.readDigits(pos, newChar.get())
       newChar = getCharacter(body, pos)
 
-  if not newChar.isNone and newChar.get() in {'E', 'e'}:
+  # Check if capital or small latin letter e (E, e).
+  if not newChar.isNone and newChar.get() in [Rune(0x0045), Rune(0x0065)]:
     isFloat = true
     inc(pos)
     newChar = getCharacter(body, pos)
-    if not newChar.isNone and newChar.get() in {'+', '-'}:
+    # Check if plus or hyphen-minus sign (+, -)
+    if not newChar.isNone and newChar.get() in [Rune(0x002B), Rune(0x002D)]:
       inc(pos)
       newChar = getCharacter(body, pos)
     if not newChar.isNone:
@@ -269,58 +302,55 @@ proc readNumber(self: Lexer, start: int, character: char, line: int, col: int, p
 
   # Numbers cannot be followed by . or NameStart
   if not newChar.isNone and (
-    newChar.get() == '.' or isNameStart(newChar.get())
+    newChar.get() == Rune(0x002E) or isNameStart(newChar.get())
   ):
     # TODO: Should be GraphQLSyntaxError
-    raise newException(ValueError, &"Invalid number, expected digit but got: {printChar(newChar.get())}.")
+    raise newException(ValueError, &"Invalid number, expected digit but got: '{printChar(newChar.get())}'.")
 
   var finalTokenKind: TokenKind
   if isFloat:
     finalTokenKind = TokenKind.FLOAT
   else:
     finalTokenKind = TokenKind.INT
-  return newToken(finalTokenKind, start, pos, line, col, prev, body[start..<pos])
+  return newToken(finalTokenKind, start, pos, line, col, prev, $(body[start ..< pos]))
 
 
 proc readBlockString(self: var Lexer, start: int, line: int, col: int, prev: Token): Token =
   ##[
     Reads a block string token from the source file.
   ]##
-  let source = self.source
-  let body = source.body
-  let bodyLen = body.len
-  var pos = start + 3
-  var chunkStart = pos
-  var rawValue = ""
+  let
+    body = self.source.body.toRunes()
+    bodyLen = body.len
+  var
+    pos = start + 3
+    chunkStart = pos
+    rawValue = ""
 
   while pos < bodyLen:
     var character = body[pos]
-    if character == '"' and pos + 2 < bodyLen and body[pos + 1..<pos + 3] == "\"\"":
-      rawValue = rawValue & body[chunkStart..<pos]
+    if character == Rune(0x0022) and pos + 2 <= bodyLen and body[pos + 1 ..< pos + 3] == @[Rune(0x0022), Rune(0x0022)]:
+      rawValue = rawValue & $(body[chunkStart ..< pos])
       return newToken(TokenKind.BLOCK_STRING, start, pos + 3, line, col, prev, dedentBlockStringValue(rawValue))
-    if character < ' ' and character notin {'\t', '\n', '\r'}:
+    # if character < ' ' and character notin {'\t', '\n', '\r'}:
+    if character.int < 32 and character notin @[Rune(0x0009), Rune(0x000A), Rune(0x000D)]:
       # TODO: Should be GraphQLSyntaxError
-      raise newException(ValueError, &"Invalid character within String: {printChar(character)}.")
-    if character == '\n':
+      raise newException(ValueError, fmt"Invalid character within String: '{printChar(character)}'.")
+    if character == Rune(0x000A):
       inc(pos)
       inc(self.line)
       self.lineStart = pos
-    elif pos + 1 < bodyLen and character == '\\' and body[pos + 1] == 'n':
-      inc(pos, 2)
+    elif character == Rune(0x000D):
+      if pos + 1 < bodyLen and body[pos + 1] == Rune(0x000A):
+        inc(pos, 2)
+      else:
+        inc(pos, 1)
       inc(self.line)
       self.lineStart = pos
-    elif character == '\r':
-      inc(pos, 1)
-      inc(self.line)
-      self.lineStart = pos
-    elif pos + 1 < bodyLen and character == '\\' and body[pos + 1] == 'n':
-      inc(pos, 2)
-      inc(self.line)
-      self.lineStart = pos
-    elif character == '\\' and pos + 3 < bodyLen and (
-      body[pos + 1] == '"' and body[pos + 2] == '"' and body[pos + 3] == '"'
+    elif character == Rune(0x005C) and pos + 3 < bodyLen and (
+      body[pos + 1 ..< pos + 4] == @[Rune(0x0022), Rune(0x0022), Rune(0x0022)]
     ):
-      rawValue = rawValue & body[chunkStart..<pos] & '"' & '"' & '"'
+      rawValue = rawValue & $(body[chunkStart ..< pos]) & '"'.repeat(3)
       inc(pos, 4)
       chunkStart = pos
     else:
@@ -334,46 +364,47 @@ proc readString(self: Lexer, start: int, line: int, col: int, prev: Token): Toke
   ##[
     Read a string token from the source file.
   ]##
-  let source = self.source
-  let body = source.body
-  let bodyLen = body.len
-  var pos = start + 1
-  var chunkStart = pos
-  var value: seq[string]
+  let
+    body = self.source.body.toRunes()
+    bodyLen = body.len
+  var
+    pos = start + 1
+    chunkStart = pos
+    value: seq[Rune]
 
   while pos < bodyLen:
     var character = body[pos]
-    if character in "\n\r":
+    if character in @[Rune(0x000D), Rune(0x000A)]:
       break
-    if character == '"':
-      value.add(body[chunkStart..<pos])
-      return newToken(TokenKind.STRING, start, pos + 1, line, col, prev, join(value))
-    if character < ' ' and character != '\t':
+    if character == Rune(0x0022):
+      value.add(body[chunkStart ..< pos])
+      return newToken(TokenKind.STRING, start, pos + 1, line, col, prev, $value)
+    # if character < ' ' and character != '\t':
+    if character.int < 32 and character notin @[Rune(0x0009)]:
       # TODO: Should be GraphQLSyntaxError
-      raise newException(ValueError, &"Invalid character within String: {printChar(character)}.")
+      raise newException(ValueError, fmt"Invalid character within String: '{printChar(character)}'.")
 
     inc(pos)
-    if character == '\\':
-      value.add(body[chunkStart..<pos - 1])
+    if character == Rune(0x005C):
+      value.add(body[chunkStart ..< pos - 1])
       character = body[pos]
       let isEscaped = isEscapedChar(character)
       if isEscaped:
         let escapedValue = EscapedChars.getOrDefault(character)
-        value.add($escapedValue)
-      elif character == 'u' and pos + 4 <= bodyLen:
-        let code = unicodeCharCode(body[pos + 1 ..< pos + 5])
+        value.add(escapedValue)
+      # Check if latin small letter u and unicode len
+      elif character == Rune(0x0075) and pos + 4 < bodyLen:
+        let code = unicodeCharCode(body[pos + 1], body[pos + 2], body[pos + 3], body[pos + 4])
         if code < 0:
-          var escape = repr(body[pos..<pos + 5])
-          escape = escape[0] & "\\" & escape[1..^1]
           # TODO: Should be GraphQLSyntaxError
-          raise newException(ValueError, &"Invalid character escape sequence: {escape}.")
-        value.add(toHex[int](code))
+          raise newException(ValueError, fmt"Invalid character escape sequence: '\u{$body[pos ..< pos + 5]}'.")
+        value.add([Rune(0x005C), Rune(0x0075)])
+        value.add(body[pos + 1 ..< pos + 5])
         inc(pos, 4)
       else:
-        var escape = repr(character)
-        escape = escape[0] & "\\" & escape[1..^1]
+        let escape = "\\" & character.toUTF8()
         # TODO: Should be GraphQLSyntaxError
-        raise newException(ValueError, &"Invalid character escape sequence: {escape}.")
+        raise newException(ValueError, fmt"Invalid character escape sequence: '{escape}'.")
       inc(pos)
       chunkStart = pos
   # TODO: Should be GraphQLSyntaxError
@@ -389,8 +420,7 @@ proc readToken*(self: var Lexer, prev: Token): Token =
     complicated tokens.
   ]##
   let
-    source = self.source
-    body = source.body
+    body = self.source.body.toRunes()
     bodyLen = body.len
     pos = self.positionAfterWhitespace(body, prev.`end`)
     line = self.line
@@ -410,19 +440,22 @@ proc readToken*(self: var Lexer, prev: Token): Token =
   if kind:
     let parsedTokenKind = parseEnum[TokenKind]($character)
     return newToken(parsedTokenKind, pos, pos + 1, line, col, prev)
-  elif character == '#':
+  # Check if it is a hashtag character (#)
+  elif character == Rune(0x0023):
     return self.readComment(pos, line, col, prev)
-  elif character == '.':
-    if pos + 2 < bodyLen and body[pos + 1] == '.' and body[pos + 2] == '.':
+  # Check if it is a triple dot character sequence (...)
+  elif character == Rune(0x002E):
+    if pos + 2 < bodyLen and body[pos + 1 ..< pos + 3] == @[Rune(0x002E), Rune(0x002E)]:
       return newToken(TokenKind.SPREAD, pos, pos + 3, line, col, prev)
-  elif IdentStartChars.contains(character):
+  # Check if is is a alphabetic or Low line (_) character
+  elif character.isAlphaAscii or character == Rune(0x005F):
     return self.readName(pos, line, col, prev)
-  elif Digits.contains(character) or character == '-':
+  # Check if it is a number taking into account hyphen-minus character (-) for negative numbers.
+  elif character.isDigitAscii or character == Rune(0x002D):
     return self.readNumber(pos, character, line, col, prev)
-  elif character == '"':
-    # Extra check as slicing outside the bounds of a sequence 
-    # (for Python built-ins) does not cause an error.
-    if pos + 2 < bodyLen and body[pos + 1] == '"' and body[pos + 2] == '"':
+  # Check if triple quotation mark character (")
+  elif character == Rune(0x0022):
+    if pos + 2 < bodyLen and body[pos + 1 ..< pos + 3] == @[Rune(0x0022), Rune(0x0022)]:
       return self.readBlockString(pos, line, col, prev)
     return self.readString(pos, line, col, prev)
   # TODO: Should be GraphQLSyntaxError
@@ -443,6 +476,7 @@ proc lookahead*(self: var Lexer): Token =
       if token.kind != TokenKind.COMMENT:
         break
   return token
+
 
 proc advance*(self: var Lexer): Token =
   ##[

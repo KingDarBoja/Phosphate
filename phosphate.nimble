@@ -11,6 +11,7 @@ srcDir        = "src"
 # Dependencies
 
 requires "nim >= 1.0.6"
+requires "unicodeplus >= 0.6.0"
 
 task test, "Runs the test suite":
   exec "nim c -r tests/language/test_source_location"

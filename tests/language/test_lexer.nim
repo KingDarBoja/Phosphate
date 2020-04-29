@@ -44,9 +44,8 @@ suite "Describe Lexer":
       except ValueError as error:
         check(error.msg == msg)
 
-  # TODO: Failing test, check for hex handling.
   test "Disallows uncommon control characters":
-    assertSyntaxError("\x07", "Cannot contain the invalid character '\\x07'.")
+    assertSyntaxError("\u0007", "Cannot contain the invalid character '\\u0007'.")
 
   # TODO: Failing test due to start and end offset by 2 (unicode)
   test "Accepts Bom header":
@@ -64,10 +63,10 @@ suite "Describe Lexer":
   test "Records line and column":
     compareTokensTwo(lexOne("\n \r\n \r  foo\n"), newToken(TokenKind.NAME, 8, 11, 4, 3, TokenSOF, "foo"))
 
-  # TODO: Provide nim utils to stringify the object.
-  # Example: '{"kind":"Name","value":"foo","line":1,"column":1}',
   test "Can be stringified or nimutils inspected":
-    discard
+    let token = lexOne("foo")
+    check(token.desc == "Name 'foo'")
+    check($token == "<Token Name 'foo' 1:1>")
 
   test "Skips whitespace and comments":
     compareTokensTwo(lexOne("\n\n    foo\n\n\n"), newToken(TokenKind.NAME, 6, 9, 3, 5, TokenSOF, "foo"))
@@ -125,8 +124,7 @@ suite "Describe Lexer":
     compareTokensOne(lexOne("\"quote \\\"\""), newToken(TokenKind.STRING, 0, 10, 1, 1, TokenSOF, "quote \""))
     compareTokensOne(lexOne("\"escaped \\n\\r\\b\\t\\f\""), newToken(TokenKind.STRING, 0, 20, 1, 1, TokenSOF, "escaped \n\r\b\t\f"))
     compareTokensOne(lexOne("\"slashes \\\\ \\/\""), newToken(TokenKind.STRING, 0, 15, 1, 1, TokenSOF, "slashes \\ /"))
-    # TODO: value props are not equal, left is hex, right is unicode.
-    compareTokensOne(lexOne("\"unicode \\u1234\\u5678\\u90AB\\uCDEF\""), newToken(TokenKind.STRING, 0, 34, 1, 1, TokenSOF, "unicode \u1234\u5678\u90AB\uCDEF"))
+    compareTokensOne(lexOne("\"unicode \\u1234\\u5678\\u90AB\\uCDEF\""), newToken(TokenKind.STRING, 0, 34, 1, 1, TokenSOF, "unicode \\u1234\\u5678\\u90AB\\uCDEF"))
 
   test "Lex reports useful string errors":
     assertSyntaxError("\"", "Unterminated string.")
@@ -134,22 +132,15 @@ suite "Describe Lexer":
     assertSyntaxError("\"\"\"\"", "Unterminated string.")
     assertSyntaxError("\"no end quote", "Unterminated string.")
     assertSyntaxError("'single quotes'", "Unexpected single quote character ('), did you mean to use a double quote (\")?")
-    # TODO: Failing test, check for hex handling.
-    assertSyntaxError("\"contains unescaped \x07 control char\"", "Invalid character within String: '\\x07'.")
-    # TODO: Failing test, check for hex handling.
-    assertSyntaxError("\"null-byte is not \x00 end of file\"", "Invalid character within String: '\\x00'.")
+    assertSyntaxError("\"contains unescaped \u0007 control char\"", "Invalid character within String: '\\u0007'.")
+    assertSyntaxError("\"null-byte is not \u0000 end of file\"", "Invalid character within String: '\\u0000'.")
     assertSyntaxError("\"multi\nline\"", "Unterminated string.")
     assertSyntaxError("\"multi\rline\"", "Unterminated string.")
     assertSyntaxError("\"bad \\x esc\"", "Invalid character escape sequence: '\\x'.")
-    # TODO: Failing test, check for hex handling.
     assertSyntaxError("\"bad \\u1 esc\"", "Invalid character escape sequence: '\\u1 es'.")
-    # TODO: Failing test, check for hex handling.
     assertSyntaxError("\"bad \\u0XX1 esc\"", "Invalid character escape sequence: '\\u0XX1'.")
-    # TODO: Failing test, check for hex handling.
     assertSyntaxError("\"bad \\uXXXX esc\"", "Invalid character escape sequence: '\\uXXXX'.")
-    # TODO: Failing test, check for hex handling.
     assertSyntaxError("\"bad \\uFXXX esc\"", "Invalid character escape sequence: '\\uFXXX'.")
-    # TODO: Failing test, check for hex handling.
     assertSyntaxError("\"bad \\uXXXF esc\"", "Invalid character escape sequence: '\\uXXXF'.")
 
   test "Lexes Block Strings":
@@ -203,25 +194,24 @@ suite "Describe Lexer":
 
   test "Advance line after lexing multiline block string":
     let trquote = "\"\"\""
+    let escLF = "\n"
     compareTokensTwo(
         lexSecond(
-                fmt"""{trquote}
+            fmt"""{trquote}
 
         spans
           multiple
             lines
 
-        \n {trquote} second_token"""
+        {escLF} {trquote} second_token"""
         ),
-      newToken(TokenKind.NAME, 72, 84, 8, 6, TokenSOF, "second_token"))
+      newToken(TokenKind.NAME, 71, 83, 8, 6, TokenSOF, "second_token"))
 
   test "Lex reports useful block string errors":
     assertSyntaxError("\"\"\"", "Unterminated string.")
     assertSyntaxError("\"\"\"no end quote", "Unterminated string.")
-    # TODO: Failing test, check for hex handling.
-    assertSyntaxError("\"\"\"contains unescaped \x07 control char\"\"\"", "Invalid character within String: '\\x07'.")
-    # TODO: Failing test, check for hex handling.
-    assertSyntaxError("\"\"\"null-byte is not \x00 end of file\"\"\"", "Invalid character within String: '\\x00'.")
+    assertSyntaxError("\"\"\"contains unescaped \u0007 control char\"\"\"", "Invalid character within String: '\\u0007'.")
+    assertSyntaxError("\"\"\"null-byte is not \u0000 end of file\"\"\"", "Invalid character within String: '\\u0000'.")
 
   test "Lexes numbers":
     compareTokensOne(
@@ -305,10 +295,8 @@ suite "Describe Lexer":
     assertSyntaxError("0b10", "Invalid number, expected digit but got: 'b'.")
     assertSyntaxError("123abc", "Invalid number, expected digit but got: 'a'.")
     assertSyntaxError("1_1234", "Invalid number, expected digit but got: '_'.")
-    # TODO: Failing test, check for hex handling.
     assertSyntaxError("1ß", "Cannot parse the unexpected character 'ß'.")
     assertSyntaxError("1.23f", "Invalid number, expected digit but got: 'f'.")
-    # TODO: Failing test, check for hex handling.
     assertSyntaxError("12ß", "Cannot parse the unexpected character 'ß'.")
 
   test "Lexes punctuation":
@@ -329,10 +317,8 @@ suite "Describe Lexer":
   test "Lex reports useful unknown character error":
     assertSyntaxError("..", "Cannot parse the unexpected character '.'.")
     assertSyntaxError("?", "Cannot parse the unexpected character '?'.")
-    # TODO: Failing test, check for hex handling.
     assertSyntaxError("\u203B", "Cannot parse the unexpected character '\u203B'.")
-    # TODO: Failing test, check for hex handling.
-    assertSyntaxError("\u200b", "Cannot parse the unexpected character '\\u200b'.")
+    assertSyntaxError("\u200b", "Cannot parse the unexpected character '\\u200B'.")
 
   test "Lex reports useful information for dashes in names":
     let source = newSource("a-b")
