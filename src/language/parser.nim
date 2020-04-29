@@ -1,6 +1,4 @@
-import strformat
-import strutils
-import options
+import strformat, strutils, options
 
 import language/ast
 import language/directive_location

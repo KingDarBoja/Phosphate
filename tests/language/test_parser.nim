@@ -123,4 +123,4 @@ suite "Describe Parser":
       arguments = cast[FieldNode](selections[0]).arguments
     check(arguments.len == 1)
     let value = cast[StringValueNode](arguments[0].value)
-    check(value.value == "Has a \u0A0A multi-byte character.")
+    check(value.value == "Has a \\u0A0A multi-byte character.")

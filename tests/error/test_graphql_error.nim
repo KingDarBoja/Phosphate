@@ -25,10 +25,6 @@ suite "Describe graphql error":
     let castedOperationNode = Node(operationDefNode)
     let fieldNode = Node(operationDefNode.selectionSet.selections[0])
 
-  test "Is a class and is a subclass of exception":
-    check(newGraphQLError("str") of Exception)
-    check(newGraphQLError("str") of GraphQLError)
-
   test "Has a name message and stack trace":
     let e = newGraphQLError("msg")
     check($(type(e)) == "GraphQLError")
