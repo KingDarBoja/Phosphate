@@ -413,7 +413,7 @@ proc parseName(self: Parser): NameNode =
     Convert a name lex token into a name parse node.
   ]##
   let token = self.expectToken(TokenKind.NAME)
-  return NameNode(value: token.value)
+  return NameNode(value: token.value, loc: self.loc(token))
 
 
 # Implement the parsing rules in the Document section.
@@ -962,15 +962,17 @@ proc parseSchemaDefinition(self: Parser): SchemaDefinitionNode =
   ##[
     SchemaDefinition
   ]##
-  let start = self.lexer.token
-  let description = self.parseDescription()
+  let
+    start = self.lexer.token
+    description = self.parseDescription()
   discard self.expectKeyword("schema")
-  let directives = self.parseDirectives(true)
-  let operationTypes = self.manyNode[:OperationTypeDefinitionNode](
-    TokenKind.BRACE_L,
-    parseOperationTypeDefinition,
-    TokenKind.BRACE_R
-  )
+  let
+    directives = self.parseDirectives(true)
+    operationTypes = self.manyNode[:OperationTypeDefinitionNode](
+      TokenKind.BRACE_L,
+      parseOperationTypeDefinition,
+      TokenKind.BRACE_R
+    )
   return SchemaDefinitionNode(
     description: description,
     directives: directives,
@@ -983,8 +985,9 @@ proc parseOperationTypeDefinition(self: Parser): OperationTypeDefinitionNode =
   ##[
     OperationTypeDefinition: OperationType : NamedType
   ]##
-  let start = self.lexer.token
-  let operation = self.parseOperationType()
+  let
+    start = self.lexer.token
+    operation = self.parseOperationType()
   discard self.expectToken(TokenKind.COLON)
   let typeRef = self.parseNamedType()
   return OperationTypeDefinitionNode(
@@ -998,11 +1001,13 @@ proc parseScalarTypeDefinition(self: Parser): ScalarTypeDefinitionNode =
   ##[
     ScalarTypeDefinition: Description? scalar Name Directives[Const]?
   ]##
-  let start = self.lexer.token
-  let description = self.parseDescription()
+  let
+    start = self.lexer.token
+    description = self.parseDescription()
   discard self.expectKeyword("scalar")
-  let name = self.parseName()
-  let directives = self.parseDirectives(true)
+  let
+    name = self.parseName()
+    directives = self.parseDirectives(true)
   return ScalarTypeDefinitionNode(
     description: description,
     name: name,
@@ -1015,13 +1020,15 @@ proc parseObjectTypeDefinition(self: Parser): ObjectTypeDefinitionNode =
   ##[
     ObjectTypeDefinition
   ]##
-  let start = self.lexer.token
-  let description = self.parseDescription()
+  let
+    start = self.lexer.token
+    description = self.parseDescription()
   discard self.expectKeyword("type")
-  let name = self.parseName()
-  let interfaces = self.parseImplementsInterfaces()
-  let directives = self.parseDirectives(true)
-  let fields = self.parseFieldsDefinition()
+  let
+    name = self.parseName()
+    interfaces = self.parseImplementsInterfaces()
+    directives = self.parseDirectives(true)
+    fields = self.parseFieldsDefinition()
   return ObjectTypeDefinitionNode(
     description: description,
     name: name,
@@ -1285,8 +1292,9 @@ proc parseScalarTypeExtension(self: Parser): ScalarTypeExtensionNode =
   let start = self.lexer.token
   discard self.expectKeyword("extends")
   discard self.expectKeyword("scalar")
-  let name = self.parseName()
-  let directives = self.parseDirectives(true)
+  let
+    name = self.parseName()
+    directives = self.parseDirectives(true)
   if directives.len == 0:
     raise self.unexpected()
   return ScalarTypeExtensionNode(
@@ -1448,8 +1456,9 @@ proc parseDirectiveLocation(self: Parser): NameNode =
   ##[
     DirectiveLocation
   ]##
-  let start = self.lexer.token
-  let name = self.parseName()
+  let
+    start = self.lexer.token
+    name = self.parseName()
   if isDirectiveLocation(name.value):
     return name
   
