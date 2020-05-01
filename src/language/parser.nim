@@ -225,14 +225,14 @@ proc parseType*(
     Consider providing the results to the utility function:
     :func:`~graphql.value_from_ast`.
   ]##
-  let parser = Parser(
+  let parser = newParser(
     source,
     noLocation,
     experimentalFragmentVariables
   )
-  parser.expectToken(TokenKind.SOF)
+  discard parser.expectToken(TokenKind.SOF)
   let `type` = parser.parseTypeReference()
-  parser.expectToken(TokenKind.EOF)
+  discard parser.expectToken(TokenKind.EOF)
   return `type`
 
 
