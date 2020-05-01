@@ -1,4 +1,4 @@
-import unittest
+import unittest, tables
 
 import language/source_location
 
@@ -61,3 +61,24 @@ suite "Source Test Suite":
       discard createSource(1, -1)
     except ValueError as e:
       check(e.msg == "column in locationOffset is 1-indexed and must be positive.")
+
+
+suite "Location Test Suite":
+
+  test "Can be formatted":
+    let location = newSourceLocation(1, 2)
+    check(location.formatted == { "line": 1, "column": 2 }.toTable)
+
+  test "Can compare with other source location":
+    let
+      location = newSourceLocation(1, 2)
+      sameLocation = newSourceLocation(1, 2)
+      differentLocation = newSourceLocation(1, 1)
+    check(location == sameLocation)
+    check(not (location == differentLocation))
+  
+  test "Can compare with formatted location":
+    let
+      location = newSourceLocation(1, 2)
+      sameLocation = newSourceLocation(1, 2)
+    check(location.formatted == sameLocation.formatted)
