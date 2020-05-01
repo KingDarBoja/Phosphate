@@ -14,26 +14,31 @@ This port is based on the [graphql-core](https://github.com/graphql-python/graph
     - [x] AST module
     - [ ] AST module tests
     - [x] Block String module
-    - [ ] Block String module Tests
+    - [x] Block String module tests
     - [x] Source module
     - [x] Source module tests
-    - [x] Location module (Merged into Source module)
-    - [ ] Location module tests (Merged into Source module tests)
-    - [x] Lexer module (Missing minor tweaks with unicode and hex values)
+    - [x] Location module
+    - [x] Location module tests
+    - [x] Lexer module
     - [x] Lexer module tests
-    - [ ] Parser module
-    - [ ] Parser module tests
+    - [x] Parser module
+    - [x] Parser module tests
     - [ ] Predicates module
     - [ ] Predicates module tests
+    - [x] Print Location module
+    - [x] Print Location module tests
+    - [ ] Printer module
+    - [ ] Printer module tests
     - [ ] Visitor module
     - [ ] Visitor module tests
 - **Errors**
-    - [ ] (WIP) GraphQLError module (requires Parser to continue)
-    - [ ] (WIP) GraphQLError module tests
+    - [x] GraphQLError module
+    - [x] GraphQLError module tests
     - [ ] LocatedError module
     - [ ] LocatedError module tests
-    - [ ] GraphQLSyntaxError module
-    - [ ] GraphQLSyntaxError module tests
+    - [x] GraphQLSyntaxError module
+
+The `location` module got merged into source module due to cyclic imports not being supported. Also, the `location` tests are available at the Python port, the JS implementation lack of it, same goes with `ast` tests.
 
 ## Development
 
