@@ -19,11 +19,12 @@ suite "Describe graphql error":
       """
       )
     )
-    let parsedAST = parse(src)
-    let operationNode = parsedAST.definitions[0]
-    let operationDefNode = OperationDefinitionNode(operationNode)
-    let castedOperationNode = Node(operationDefNode)
-    let fieldNode = Node(operationDefNode.selectionSet.selections[0])
+    let
+      parsedAST = parse(src)
+      operationNode = parsedAST.definitions[0]
+      operationDefNode = OperationDefinitionNode(operationNode)
+      castedOperationNode = Node(operationDefNode)
+      fieldNode = Node(operationDefNode.selectionSet.selections[0])
 
   test "Has a name message and stack trace":
     let e = newGraphQLError("msg")
@@ -84,9 +85,18 @@ suite "Describe graphql error":
     check(repr(e) == "GraphQLError(msg, extensions={foo: bar})")
 
   test "Serializes to include path":
-    let samplePath = @["path", "3", "to", "field"]
-    let e = newGraphQLError("msg", path=samplePath)
+    let
+      samplePath = @["path", "3", "to", "field"]
+      e = newGraphQLError("msg", path=samplePath)
     check(e.path == samplePath)
+
+  test "Is comparable":
+    let
+      p1 = @["field", "1"]
+      e1 = newGraphQLError("msg,", path=p1)
+      e2 = newGraphQLError("msg,", path=p1)
+    check(equalFormatted(e1.formatted, e2.formatted))
+
 
 suite "Describe print error":
 

@@ -174,7 +174,15 @@ proc printError*(error: GraphQLError): string =
   return join(output, "\n\n")
 
 
-proc formatError(error: GraphQLError): Table = 
+type
+  GraphQLFormattedError = object
+    message: string
+    locations: seq[Table[string, int]]
+    path: seq[string]
+    extensions: StringTableRef
+
+
+proc formatError(error: GraphQLError): GraphQLFormattedError = 
   ##[
     Format a GraphQL error.
 
@@ -184,22 +192,25 @@ proc formatError(error: GraphQLError): Table =
   let formattedLocations = collect(newSeq):
     for location in error.locations:
       if error.locations.len > 0: location.formatted
-      else: nil
 
-  let formatted = {
-    "message": error.msg or "An unknown error ocurred.",
-    "locations": formattedLocations,
-    "path": error.path
-  }
-
-  if not error.extensions.isNil:
-    formatted.add("extensions": error.extensions)
-
-  return formatted.toTable
+  let formatted = GraphQLFormattedError(
+    message: if error.msg.isEmptyOrWhitespace: error.msg else: "An unknown error ocurred.",
+    locations: formattedLocations,
+    path: error.path,
+    extensions: if not error.extensions.isNil: error.extensions else: nil
+  )
+  result = formatted
 
 
-proc formatted*(self: GraphQLError): Table =
+proc formatted*(self: GraphQLError): GraphQLFormattedError =
   ##[
     Get error formatted according to the specification.
   ]##
-  return formatError(self)
+  result = formatError(self)
+
+
+proc equalFormatted*(a, b: GraphQLFormattedError): bool =
+  result = a.message == b.message
+  result = a.locations == b.locations
+  result = a.path == b.path
+  result = a.extensions[] == b.extensions[]
