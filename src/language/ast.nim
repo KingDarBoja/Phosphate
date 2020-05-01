@@ -1,4 +1,6 @@
 ## AST Module
+import strformat
+
 import source_location
 import token_kind
 
@@ -42,6 +44,20 @@ proc newToken*(
   )
 
 
+proc desc*(self: Token): string =
+  ##[
+    A helper property to describe a token as a string for debugging"""
+  ]##
+  let
+    kind = $(self.kind)
+    value = self.value
+  result = if value.len > 0: fmt"{kind} '{value}'" else: kind
+
+
+proc `$`*(self: Token): string =
+  result = fmt"<Token {self.desc} {self.line}:{self.column}>"
+
+
 type Location* = ref object
   ##[
     AST Location
@@ -54,6 +70,24 @@ type Location* = ref object
   startToken*: Token ## Token at which this Node begins
   endToken*: Token ## Token at which this Node ends.
   source*: Source ## Source document the AST represents
+
+
+proc `==`*(a, b: Location): bool =
+  result = a.start == b.start
+  result = a.`end` == b.`end`
+
+
+proc `==`*(a: Location, b: tuple[start: int, `end`: int]): bool =
+  result = a.start == b[0]
+  result = a.`end` == b[1]
+
+
+proc `$`*(self: Location): string =
+  result = "{" & fmt" start: {self.start}, end: {self.`end`} " & "}"
+
+
+proc desc*(self: Location): string =
+  result = fmt"<Location {self.start}:{self.`end`}>"
 
 
 proc newLocation*(
