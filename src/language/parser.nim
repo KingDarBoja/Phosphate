@@ -74,10 +74,10 @@ proc parseOperationDefinition(self: Parser): OperationDefinitionNode
 proc parseOperationType(self: Parser): OperationTypeNode
 proc parseVariableDefinitions(self: Parser): seq[VariableDefinitionNode]
 proc parseVariableDefinition(self: Parser): VariableDefinitionNode
-proc parseVariable(self: Parser): VariableNode
+proc parseVariable(self: Parser): ValueNode
 proc parseSelectionSet(self: Parser): SelectionSetNode
 proc parseSelection(self: Parser): SelectionNode
-proc parseField(self: Parser): FieldNode
+proc parseField(self: Parser): SelectionNode
 proc parseArguments(self: Parser, isConst: bool): seq[ArgumentNode]
 proc parseArgument(self: Parser): ArgumentNode
 proc parseConstArgument(self: Parser): ArgumentNode
@@ -86,18 +86,18 @@ proc parseConstArgument(self: Parser): ArgumentNode
 proc parseFragment(self: Parser): SelectionNode
 proc parseFragmentDefinition(self: Parser): FragmentDefinitionNode
 proc parseFragmentName(self: Parser): NameNode
-proc parseTypeCondition(self: Parser): NamedTypeNode
+proc parseTypeCondition(self: Parser): TypeNode
 
 # Values Section
 proc parseValueLiteral(self: Parser, isConst: bool): ValueNode
-proc parseList(self: Parser, isConst: bool): ListValueNode
+proc parseList(self: Parser, isConst: bool): ValueNode
 proc parseObjectField(self: Parser, isConst: bool): ObjectFieldNode
-proc parseObject(self: Parser, isConst: bool): ObjectValueNode
-proc parseInt(self: Parser, isConst: bool = false): IntValueNode
-proc parseFloat(self: Parser, isConst: bool = false): FloatValueNode
-proc parseStringLiteral(self: Parser, isConst: bool = false): StringValueNode
+proc parseObject(self: Parser, isConst: bool): ValueNode
+proc parseInt(self: Parser, isConst: bool = false): ValueNode
+proc parseFloat(self: Parser, isConst: bool = false): ValueNode
+proc parseStringLiteral(self: Parser, isConst: bool = false): ValueNode
 proc parseNamedValues(self: Parser, isConst: bool = false): ValueNode
-proc parseVariableValue(self: Parser, isConst: bool = false): VariableNode
+proc parseVariableValue(self: Parser, isConst: bool = false): ValueNode
 
 # Directives Section
 proc parseDirectives(self: Parser, isConst: bool): seq[DirectiveNode]
@@ -105,27 +105,27 @@ proc parseDirective(self: Parser, isConst: bool): DirectiveNode
 
 # Types Section
 proc parseTypeReference(self: Parser): TypeNode
-proc parseNamedType(self: Parser): NamedTypeNode
+proc parseNamedType(self: Parser): TypeNode
 
 # Type Definition Section
 proc parseTypeSystemDefinition(self: Parser): TypeSystemDefinitionNode
-proc parseDescription(self: Parser): StringValueNode
-proc parseSchemaDefinition(self: Parser): SchemaDefinitionNode
+proc parseDescription(self: Parser): ValueNode
+proc parseSchemaDefinition(self: Parser): TypeSystemDefinitionNode
 proc parseOperationTypeDefinition(self: Parser): OperationTypeDefinitionNode
-proc parseScalarTypeDefinition(self: Parser): ScalarTypeDefinitionNode
-proc parseObjectTypeDefinition(self: Parser): ObjectTypeDefinitionNode
-proc parseImplementsInterfaces(self: Parser): seq[NamedTypeNode]
+proc parseScalarTypeDefinition(self: Parser): TypeSystemDefinitionNode
+proc parseObjectTypeDefinition(self: Parser): TypeSystemDefinitionNode
+proc parseImplementsInterfaces(self: Parser): seq[TypeNode]
 proc parseFieldsDefinition(self: Parser): seq[FieldDefinitionNode]
 proc parseFieldDefinition(self: Parser): FieldDefinitionNode
 proc parseArgumentDefs(self: Parser): seq[InputValueDefinitionNode]
 proc parseInputValueDef(self: Parser): InputValueDefinitionNode
-proc parseInterfaceTypeDefinition(self: Parser): InterfaceTypeDefinitionNode
-proc parseUnionTypeDefinition(self: Parser): UnionTypeDefinitionNode
-proc parseUnionMemberTypes(self: Parser): seq[NamedTypeNode]
-proc parseEnumTypeDefinition(self: Parser): EnumTypeDefinitionNode
+proc parseInterfaceTypeDefinition(self: Parser): TypeSystemDefinitionNode
+proc parseUnionTypeDefinition(self: Parser): TypeSystemDefinitionNode
+proc parseUnionMemberTypes(self: Parser): seq[TypeNode]
+proc parseEnumTypeDefinition(self: Parser): TypeSystemDefinitionNode
 proc parseEnumValuesDefinition(self: Parser): seq[EnumValueDefinitionNode]
 proc parseEnumValueDefinition(self: Parser): EnumValueDefinitionNode
-proc parseInputObjectTypeDefinition(self: Parser): InputObjectTypeDefinitionNode
+proc parseInputObjectTypeDefinition(self: Parser): TypeSystemDefinitionNode
 proc parseInputFieldsDefinition(self: Parser): seq[InputValueDefinitionNode]
 proc parseTypeSystemExtension(self: Parser): TypeSystemExtensionNode
 proc parseSchemaExtension(self: Parser): SchemaExtensionNode
@@ -135,7 +135,7 @@ proc parseInterfaceTypeExtension(self: Parser): InterfaceTypeExtensionNode
 proc parseUnionTypeExtension(self: Parser): UnionTypeExtensionNode
 proc parseEnumTypeExtension(self: Parser): EnumTypeExtensionNode
 proc parseInputObjectTypeExtension(self: Parser): InputObjectTypeExtensionNode
-proc parseDirectiveDefinition(self: Parser): DirectiveDefinitionNode
+proc parseDirectiveDefinition(self: Parser): TypeSystemDefinitionNode
 proc parseDirectiveLocations(self: Parser): seq[NameNode]
 proc parseDirectiveLocation(self: Parser): NameNode
 
@@ -526,13 +526,14 @@ proc parseVariableDefinition(self: Parser): VariableDefinitionNode =
   )
 
 
-proc parseVariable(self: Parser): VariableNode =
+proc parseVariable(self: Parser): ValueNode =
   ##[
     Variable: $Name
   ]##
   let start = self.lexer.token
   discard self.expectToken(TokenKind.DOLLAR)
-  return VariableNode(
+  return ValueNode(
+    kind: VariableNode,
     name: self.parseName(),
     loc: self.loc(start)
   )
@@ -560,7 +561,7 @@ proc parseSelection(self: Parser): SelectionNode =
   return if self.peek(TokenKind.SPREAD): self.parseFragment() else: self.parseField()
 
 
-proc parseField(self: Parser): FieldNode =
+proc parseField(self: Parser): SelectionNode =
   ##[
     Field: Alias? Name Arguments? Directives? SelectionSet?
   ]##
@@ -574,7 +575,8 @@ proc parseField(self: Parser): FieldNode =
   else:
     alias = nil
     name = nameOrAlias
-  return FieldNode(
+  return SelectionNode(
+    kind: FieldNode,
     alias: alias,
     name: name,
     arguments: self.parseArguments(false),
@@ -638,14 +640,16 @@ proc parseFragment(self: Parser): SelectionNode =
 
   let hasTypeCondition = self.expectOptionalKeyword("on")
   if not hasTypeCondition and self.peek(TokenKind.NAME):
-    return FragmentSpreadNode(
+    return SelectionNode(
+      kind: FragmentSpreadNode,
       name: self.parseFragmentName(),
       directives: self.parseDirectives(false),
       loc: self.loc(start)
     )
   else: discard
 
-  return InlineFragmentNode(
+  return SelectionNode(
+    kind: InlineFragmentNode,
     typeCondition: if hasTypeCondition: self.parseNamedType() else: nil,
     directives: self.parseDirectives(false),
     selectionSet: self.parseSelectionSet(),
@@ -680,7 +684,7 @@ proc parseFragmentName(self: Parser): NameNode =
   return self.parseName()
 
 
-proc parseTypeCondition(self: Parser): NamedTypeNode =
+proc parseTypeCondition(self: Parser): TypeNode =
   ##[
     TypeCondition: NamedType
   ]##
@@ -713,22 +717,24 @@ proc parseValueLiteral(self: Parser, isConst: bool): ValueNode =
   raise self.unexpected()
 
 
-proc parseStringLiteral(self: Parser, isConst: bool = false): StringValueNode =
+proc parseStringLiteral(self: Parser, isConst: bool = false): ValueNode =
   let token = self.lexer.token
   discard self.lexer.advance()
-  return StringValueNode(
+  return ValueNode(
+    kind: StringValueNode,
     value: token.value,
     `block`: token.kind == TokenKind.BLOCK_STRING,
     loc: self.loc(token)
   )
 
 
-proc parseList(self: Parser, isConst: bool): ListValueNode =
+proc parseList(self: Parser, isConst: bool): ValueNode =
   ##[
     ListValue[Const]
   ]##
   let start = self.lexer.token
-  return ListValueNode(
+  return ValueNode(
+    kind: ListValueNode,
     values: self.anyNode[:ValueNode](
       TokenKind.BRACKET_L,
       partialValueLiteral(self, isConst),
@@ -750,12 +756,13 @@ proc parseObjectField(self: Parser, isConst: bool): ObjectFieldNode =
   )
 
 
-proc parseObject(self: Parser, isConst: bool): ObjectValueNode =
+proc parseObject(self: Parser, isConst: bool): ValueNode =
   ##[
     ObjectValue[Const]
   ]##
   let start = self.lexer.token
-  return ObjectValueNode(
+  return ValueNode(
+    kind: ObjectValueNode,
     fields: self.anyNode[:ObjectFieldNode](
       TokenKind.BRACE_L,
       partialObjectField(self, isConst),
@@ -765,40 +772,43 @@ proc parseObject(self: Parser, isConst: bool): ObjectValueNode =
   )
 
 
-proc parseInt(self: Parser, isConst: bool = false): IntValueNode =
+proc parseInt(self: Parser, isConst: bool = false): ValueNode =
   let token = self.lexer.token
   discard self.lexer.advance()
-  return IntValueNode(
-    value: token.value,
+  return ValueNode(
+    kind: IntValueNode,
+    strValue: token.value,
     loc: self.loc(token)
   )
 
 
-proc parseFloat(self: Parser, isConst: bool = false): FloatValueNode =
+proc parseFloat(self: Parser, isConst: bool = false): ValueNode =
   let token = self.lexer.token
   discard self.lexer.advance()
-  return FloatValueNode(
-    value: token.value,
+  return ValueNode(
+    kind: FloatValueNode,
+    strValue: token.value,
     loc: self.loc(token)
   )
 
 
 proc parseNamedValues(self: Parser, isConst: bool = false): ValueNode =
-  let token = self.lexer.token
-  let value = token.value
+  let
+    token = self.lexer.token
+    value = token.value
   discard self.lexer.advance()
   case value
   of "true":
-    return BooleanValueNode(value: true, loc: self.loc(token))
+    return ValueNode(kind: BooleanValueNode, boolValue: true, loc: self.loc(token))
   of "false":
-    return BooleanValueNode(value: false, loc: self.loc(token))
+    return ValueNode(kind: BooleanValueNode, boolValue: false, loc: self.loc(token))
   of "null":
-    return NullValueNode(loc: self.loc(token))
+    return ValueNode(kind: BooleanValueNode, loc: self.loc(token))
   else:
-    return EnumValueNode(value: value, loc: self.loc(token))
+    return ValueNode(kind: EnumValueNode, strValue: value, loc: self.loc(token))
 
 
-proc parseVariableValue(self: Parser, isConst: bool = false): VariableNode =
+proc parseVariableValue(self: Parser, isConst: bool = false): ValueNode =
   if not isConst:
     return self.parseVariable()
   raise self.unexpected()
@@ -842,26 +852,29 @@ proc parseTypeReference(self: Parser): TypeNode =
   if not self.expectOptionalToken(TokenKind.BRACKET_L).isNil:
     typeRef = self.parseTypeReference()
     discard self.expectToken(TokenKind.BRACKET_R)
-    typeRef = ListTypeNode(
+    typeRef = TypeNode(
+      kind: ListTypeNode,
       `type`: typeRef,
       loc: self.loc(start)
     )
   else:
     typeRef = self.parseNamedType()
   if not self.expectOptionalToken(TokenKind.BANG).isNil:
-    return NonNullTypeNode(
-      `type`: cast[NonNullablesTypes](typeRef),
+    return TypeNode(
+      kind: NonNullTypeNode,
+      `type`: typeRef,
       loc: self.loc(start)
     )
   return typeRef
     
 
-proc parseNamedType(self: Parser): NamedTypeNode =
+proc parseNamedType(self: Parser): TypeNode =
   ##[
     NamedType: Name
   ]##
   let start = self.lexer.token
-  return NamedTypeNode(
+  return TypeNode(
+    kind: NamedTypeNode,
     name: self.parseName(),
     loc: self.loc(start)
   )
@@ -949,7 +962,7 @@ proc parseTypeSystemExtension(self: Parser): TypeSystemExtensionNode =
 
 
 
-proc parseDescription(self: Parser): StringValueNode =
+proc parseDescription(self: Parser): ValueNode =
   ##[
     Description: StringValue
   ]##
@@ -958,7 +971,7 @@ proc parseDescription(self: Parser): StringValueNode =
   return nil
 
 
-proc parseSchemaDefinition(self: Parser): SchemaDefinitionNode =
+proc parseSchemaDefinition(self: Parser): TypeSystemDefinitionNode =
   ##[
     SchemaDefinition
   ]##
@@ -973,7 +986,8 @@ proc parseSchemaDefinition(self: Parser): SchemaDefinitionNode =
       parseOperationTypeDefinition,
       TokenKind.BRACE_R
     )
-  return SchemaDefinitionNode(
+  return TypeSystemDefinitionNode(
+    kind: SchemaDefinitionNode,
     description: description,
     directives: directives,
     operationTypes: operationTypes,
@@ -997,7 +1011,7 @@ proc parseOperationTypeDefinition(self: Parser): OperationTypeDefinitionNode =
   )
 
 
-proc parseScalarTypeDefinition(self: Parser): ScalarTypeDefinitionNode =
+proc parseScalarTypeDefinition(self: Parser): TypeSystemDefinitionNode =
   ##[
     ScalarTypeDefinition: Description? scalar Name Directives[Const]?
   ]##
@@ -1008,7 +1022,9 @@ proc parseScalarTypeDefinition(self: Parser): ScalarTypeDefinitionNode =
   let
     name = self.parseName()
     directives = self.parseDirectives(true)
-  return ScalarTypeDefinitionNode(
+  return TypeSystemDefinitionNode(
+    kind: TypeDefinitionNode,
+    tdKind: ScalarTypeDefinitionNode,
     description: description,
     name: name,
     directives: directives,
@@ -1016,7 +1032,7 @@ proc parseScalarTypeDefinition(self: Parser): ScalarTypeDefinitionNode =
   )
 
 
-proc parseObjectTypeDefinition(self: Parser): ObjectTypeDefinitionNode =
+proc parseObjectTypeDefinition(self: Parser): TypeSystemDefinitionNode =
   ##[
     ObjectTypeDefinition
   ]##
@@ -1029,7 +1045,9 @@ proc parseObjectTypeDefinition(self: Parser): ObjectTypeDefinitionNode =
     interfaces = self.parseImplementsInterfaces()
     directives = self.parseDirectives(true)
     fields = self.parseFieldsDefinition()
-  return ObjectTypeDefinitionNode(
+  return TypeSystemDefinitionNode(
+    kind: TypeDefinitionNode,
+    tdKind: ObjectTypeDefinitionNode,
     description: description,
     name: name,
     interfaces: interfaces,
@@ -1040,11 +1058,11 @@ proc parseObjectTypeDefinition(self: Parser): ObjectTypeDefinitionNode =
 
 
 
-proc parseImplementsInterfaces(self: Parser): seq[NamedTypeNode] =
+proc parseImplementsInterfaces(self: Parser): seq[TypeNode] =
   ##[
     ImplementsInterfaces
   ]##
-  var types: seq[NamedTypeNode]
+  var types: seq[TypeNode]
   if self.expectOptionalKeyword("implements"):
     # optional leading ampersand
     discard self.expectOptionalToken(TokenKind.AMP)
@@ -1123,7 +1141,7 @@ proc parseInputValueDef(self: Parser): InputValueDefinitionNode =
   )
 
 
-proc parseInterfaceTypeDefinition(self: Parser): InterfaceTypeDefinitionNode =
+proc parseInterfaceTypeDefinition(self: Parser): TypeSystemDefinitionNode =
   ##[
     InterfaceTypeDefinition
   ]##
@@ -1136,7 +1154,9 @@ proc parseInterfaceTypeDefinition(self: Parser): InterfaceTypeDefinitionNode =
     interfaces = self.parseImplementsInterfaces()
     directives = self.parseDirectives(true)
     fields = self.parseFieldsDefinition()
-  return InterfaceTypeDefinitionNode(
+  return TypeSystemDefinitionNode(
+    kind: TypeDefinitionNode,
+    tdKind: InterfaceTypeDefinitionNode,
     description: description,
     name: name,
     interfaces: interfaces,
@@ -1146,7 +1166,7 @@ proc parseInterfaceTypeDefinition(self: Parser): InterfaceTypeDefinitionNode =
   )
 
 
-proc parseUnionTypeDefinition(self: Parser): UnionTypeDefinitionNode =
+proc parseUnionTypeDefinition(self: Parser): TypeSystemDefinitionNode =
   ##[
     UnionTypeDefinition
   ]##
@@ -1158,7 +1178,9 @@ proc parseUnionTypeDefinition(self: Parser): UnionTypeDefinitionNode =
     name = self.parseName()
     directives = self.parseDirectives(true)
     types = self.parseUnionMemberTypes()
-  return UnionTypeDefinitionNode(
+  return TypeSystemDefinitionNode(
+    kind: TypeDefinitionNode,
+    tdKind: UnionTypeDefinitionNode,
     description: description,
     name: name,
     directives: directives,
@@ -1167,11 +1189,11 @@ proc parseUnionTypeDefinition(self: Parser): UnionTypeDefinitionNode =
   )
 
 
-proc parseUnionMemberTypes(self: Parser): seq[NamedTypeNode] =
+proc parseUnionMemberTypes(self: Parser): seq[TypeNode] =
   ##[
     UnionMemberTypes
   ]##
-  var types: seq[NamedTypeNode]
+  var types: seq[TypeNode]
   if not self.expectOptionalToken(TokenKind.EQUALS).isNil:
     # optional leading pipe
     discard self.expectOptionalToken(TokenKind.PIPE)
@@ -1182,7 +1204,7 @@ proc parseUnionMemberTypes(self: Parser): seq[NamedTypeNode] =
   return types
 
 
-proc parseEnumTypeDefinition(self: Parser): EnumTypeDefinitionNode =
+proc parseEnumTypeDefinition(self: Parser): TypeSystemDefinitionNode =
   ##[
     UnionTypeDefinition
   ]##
@@ -1194,7 +1216,9 @@ proc parseEnumTypeDefinition(self: Parser): EnumTypeDefinitionNode =
     name = self.parseName()
     directives = self.parseDirectives(true)
     values = self.parseEnumValuesDefinition()
-  return EnumTypeDefinitionNode(
+  return TypeSystemDefinitionNode(
+    kind: TypeDefinitionNode,
+    tdKind: EnumTypeDefinitionNode,
     description: description,
     name: name,
     directives: directives,
@@ -1231,7 +1255,7 @@ proc parseEnumValueDefinition(self: Parser): EnumValueDefinitionNode =
   )
 
 
-proc parseInputObjectTypeDefinition(self: Parser): InputObjectTypeDefinitionNode =
+proc parseInputObjectTypeDefinition(self: Parser): TypeSystemDefinitionNode =
   ##[
     InputObjectTypeDefinition
   ]##
@@ -1243,11 +1267,13 @@ proc parseInputObjectTypeDefinition(self: Parser): InputObjectTypeDefinitionNode
     name = self.parseName()
     directives = self.parseDirectives(true)
     fields = self.parseInputFieldsDefinition()
-  return InputObjectTypeDefinitionNode(
+  return TypeSystemDefinitionNode(
+    kind: TypeDefinitionNode,
+    tdKind: InputObjectTypeDefinitionNode,
     description: description,
     name: name,
     directives: directives,
-    fields: fields,
+    fieldsDef: fields,
     loc: self.loc(start)
   )
 
@@ -1413,7 +1439,7 @@ proc parseInputObjectTypeExtension(self: Parser): InputObjectTypeExtensionNode =
   )
 
 
-proc parseDirectiveDefinition(self: Parser): DirectiveDefinitionNode =
+proc parseDirectiveDefinition(self: Parser): TypeSystemDefinitionNode =
   ##[
     DirectiveDefinition
   ]##
@@ -1428,7 +1454,8 @@ proc parseDirectiveDefinition(self: Parser): DirectiveDefinitionNode =
     repeatable = self.expectOptionalKeyword("repeatable")
   discard self.expectKeyword("on")
   let locations = self.parseDirectiveLocations()
-  return DirectiveDefinitionNode(
+  return TypeSystemDefinitionNode(
+    kind: DirectiveDefinitionNode,
     description: description,
     name: name,
     arguments: args,

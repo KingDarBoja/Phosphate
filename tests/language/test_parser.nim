@@ -121,9 +121,9 @@ suite "Describe Parser":
       selections = selectionSet.selections
     check(selections.len == 1)
     let 
-      arguments = cast[FieldNode](selections[0]).arguments
+      arguments = selections[0].arguments
     check(arguments.len == 1)
-    let value = cast[StringValueNode](arguments[0].value)
+    let value = arguments[0].value
     check(value.value == "Has a \\u0A0A multi-byte character.")
 
   # TODO: Provide fixtures
@@ -222,7 +222,7 @@ suite "Describe Parser":
     # definitions[0] -> selectionSet -> selections
     var selections = selectionSet.selections
     check(selections.len == 1)
-    var field = cast[FieldNode](selections[0])
+    var field = selections[0]
     check(field.loc == (4, 38))
     check(field.alias.isNil)
     var name = field.name
@@ -235,9 +235,9 @@ suite "Describe Parser":
     name = argument.name
     check(name.loc == (9, 11))
     check(name.value == "id")
-    let value = cast[IntValueNode](argument.value)
+    let value = argument.value
     check(value.loc == (13, 14))
-    check(value.value == "4")
+    check(value.strValue == "4")
     check(argument.loc == (9, 14))
     check(field.directives.len == 0)
     # definitions[0] -> selectionSet -> selections[0] -> selectionSet
@@ -246,7 +246,7 @@ suite "Describe Parser":
     selections = selectionSet.selections
     check(selections.len == 2)
     # definitions[0] -> selectionSet -> selections[0] -> selectionSet -> selections[0]
-    field = cast[FieldNode](selections[0])
+    field = selections[0]
     check(field.loc == (22, 24))
     check(field.alias.isNil)
     name = field.name
@@ -256,7 +256,7 @@ suite "Describe Parser":
     check(field.directives.len == 0)
     check(field.selectionSet.isNil)
     # definitions[0] -> selectionSet -> selections[0] -> selectionSet -> selections[1]
-    field = cast[FieldNode](selections[1])
+    field = selections[1]
     check(field.loc == (30, 34))
     check(field.alias.isNil)
     name = field.name
@@ -294,7 +294,7 @@ suite "Describe Parser":
     # definitions[0] -> selectionSet -> selections
     var selections = selectionSet.selections
     check(selections.len == 1)
-    var field = cast[FieldNode](selections[0])
+    var field = selections[0]
     check(field.loc == (10, 27))
     check(field.alias.isNil)
     var name = field.name
@@ -308,7 +308,7 @@ suite "Describe Parser":
     # definitions[0] -> selectionSet -> selections[0] -> selectionSet -> selections
     selections = selectionSet.selections
     check(selections.len == 1)
-    field = cast[FieldNode](selections[0])
+    field = selections[0]
     check(field.loc == (21, 23))
     check(field.alias.isNil)
     name = field.name
@@ -372,32 +372,32 @@ suite "Describe Parse Value":
     check(res.loc == (0, 4))
 
   test "Parses empty strings":
-    let res = cast[StringValueNode](parseValue("\"\""))
+    let res = parseValue("\"\"")
     check(res.value == "")
     check(res.loc == (0, 2))
   
   test "Parses list values":
-    let res = cast[ListValueNode](parseValue("[123 \"abc\"]"))
+    let res = parseValue("[123 \"abc\"]")
     check(res.loc == (0, 11))
     let values = res.values
     check(values.len == 2)
-    let valueOne = cast[IntValueNode](values[0])
+    let valueOne = values[0]
     check(valueOne.loc == (1, 4))
-    check(valueOne.value == "123")
-    let valueTwo = cast[StringValueNode](values[1])
+    check(valueOne.strValue == "123")
+    let valueTwo = values[1]
     check(valueTwo.loc == (5, 10))
     check(valueTwo.value == "abc")
 
   test "Parses block strings":
-    let res = cast[ListValueNode](parseValue("[\"\"\"long\"\"\" \"short\"]"))
+    let res = parseValue("[\"\"\"long\"\"\" \"short\"]")
     check(res.loc == (0, 20))
     let values = res.values
     check(values.len == 2)
-    let valueOne = cast[StringValueNode](values[0])
+    let valueOne = values[0]
     check(valueOne.loc == (1, 11))
     check(valueOne.value == "long")
     check(valueOne.`block`)
-    let valueTwo = cast[StringValueNode](values[1])
+    let valueTwo = values[1]
     check(valueTwo.loc == (12, 19))
     check(valueTwo.value == "short")
     check(not valueTwo.`block`)
@@ -406,43 +406,43 @@ suite "Describe Parse Value":
 suite "Describe Parse Type":
 
   test "Parses well know types":
-    let res = cast[NamedTypeNode](parseType("String"))
+    let res = parseType("String")
     check(res.loc == (0, 6))
     let name = res.name
     check(name.loc == (0, 6))
     check(name.value == "String")
 
   test "Parses custom types":
-    let res = cast[NamedTypeNode](parseType("MyType"))
+    let res = parseType("MyType")
     check(res.loc == (0, 6))
     let name = res.name
     check(name.loc == (0, 6))
     check(name.value == "MyType")
 
   test "Parses list types":
-    let res = cast[ListTypeNode](parseType("[MyType]"))
+    let res = parseType("[MyType]")
     check(res.loc == (0, 8))
-    let stype = cast[NamedTypeNode](res.`type`)
+    let stype = res.`type`
     check(stype.loc == (1, 7))
     let name = stype.name
     check(name.loc == (1, 7))
     check(name.value == "MyType")
 
   test "Parses non null types":
-    let res = cast[NonNullTypeNode](parseType("MyType!"))
+    let res = parseType("MyType!")
     check(res.loc == (0, 7))
-    let stype = cast[NamedTypeNode](res.`type`)
+    let stype = res.`type`
     check(stype.loc == (0, 6))
     let name = stype.name
     check(name.loc == (0, 6))
     check(name.value == "MyType")
 
   test "Parses nested types":
-    let res = cast[ListTypeNode](parseType("[MyType!]"))
+    let res = parseType("[MyType!]")
     check(res.loc == (0, 9))
-    let stype = cast[NonNullTypeNode](res.`type`)
+    let stype = res.`type`
     check(stype.loc == (1, 8))
-    let ntype = cast[NamedTypeNode](stype.`type`)
+    let ntype = stype.`type`
     check(ntype.loc == (1, 7))
     let name = ntype.name
     check(name.loc == (1, 7))
