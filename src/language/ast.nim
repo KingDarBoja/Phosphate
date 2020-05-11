@@ -103,457 +103,146 @@ proc newLocation*(
     source: source,
   )
 
-# type
-#   NodeKind = enum
-#     ## GraphQL AST node kinds according to the 
-#     ## GraphQL spec query language:
-#     ## https://spec.graphql.org/draft/#sec-Language
-#     NameNode
-#     DocumentNode
-#     DefinitionNode
-#   OperationTypeNode = enum
-#     ## There are three types of operations that GraphQL models
-#     ## - query: a read‐only fetch.
-#     ## - mutation: a write followed by a fetch.
-#     ## - subscription: a long‐lived request that fetches 
-#     ##   data in response to source events.
-#     ## https://spec.graphql.org/draft/#sec-Language.Operations
-#     QUERY = "query"
-#     MUTATION = "mutation"
-#     SUBSCRIPTION = "subscription"
-  #   DefinitionNode
-  #   VariableDefinitionNode
-  # DefinitionKind = enum
-  #   ## GraphQL Document definition kinds.
-  #   ## https://spec.graphql.org/draft/#sec-Document
-  #   ExecutableDefinitionNode
-  #   TypeSystemDefinitionNode
-  #   TypeSystemExtensionNode
-  # ExecutableDefinitionKind = enum
-  #   OperationDefinitionNode
-  #   FragmentDefinitionNode
-  # TypeSystemDefinitionKind = enum
-  #   SchemaDefinitionNode
-  #   TypeDefinitionNode
-  #   DirectiveDefinitionNode
-  # TypeDefinitionKind = enum
-  #   ScalarTypeDefinitionNode
-  #   ObjectTypeDefinitionNode
-  #   InterfaceTypeDefinitionNode
-  #   UnionTypeDefinitionNode
-  #   EnumTypeDefinitionNode
-  #   InputObjectTypeDefinitionNode
-  # TypeSystemExtensionKind = enum
-  #   SchemaExtensionNode
-  #   TypeExtensionNode
-  # TypeExtensionKind = enum
-  #   ScalarTypeExtensionNode
-  #   ObjectTypeExtensionNode
-  #   InterfaceTypeExtensionNode
-  #   UnionTypeExtensionNode
-  #   EnumTypeExtensionNode
-  #   InputObjectTypeExtensionNode
-    # OperationDefinitionNode
-    # VariableDefinitionNode
-    # VariableNode
-    # SelectionSetNode
-    # FieldNode
-    # ArgumentNode
-    # FragmentSpreadNode
-    # InlineFragmentNode
-    # FragmentDefinitionNode
-    # IntValueNode
-    # FloatValueNode
-    # StringValueNode
-    # BooleanValueNode
-    # NullValueNode
-    # EnumValueNode
-    # ListValueNode
-    # ObjectValueNode
-    # ObjectFieldNode
-    # DirectiveNode
-    # NamedTypeNode
-    # ListTypeNode
-    # NonNullTypeNode
-    # SchemaDefinitionNode
-    # OperationTypeDefinitionNode
-    # ScalarTypeDefinitionNode
-    # ObjectTypeDefinitionNode
-    # FieldDefinitionNode
-    # InputValueDefinitionNode
-    # InterfaceTypeDefinitionNode
-    # UnionTypeDefinitionNode
-    # EnumTypeDefinitionNode
-    # EnumValueDefinitionNode
-    # InputObjectTypeDefinitionNode
-    # DirectiveDefinitionNode
-    # SchemaExtensionNode
-    # ScalarTypeExtensionNode
-    # ObjectTypeExtensionNode
-    # InterfaceTypeExtensionNode
-    # UnionTypeExtensionNode
-    # EnumTypeExtensionNode
-    # InputObjectTypeExtensionNode
-  # Node = ref object
-  #   loc*: Location
-  #   case kind: NodeKind
-  #   of NameNode:
-  #     value: string
-  #   of DefinitionNode:
-  #     discard
-  #   of DocumentNode:
-  #     definitions: seq[Node]
+
+type
+  GraphOperationTypeKind* = enum
+    gnkOperationQuery = "query"
+    gnkOperationMutation = "mutation"
+    gnkOperationSubscription = "subscription"
+
+type
+  GraphNodeKind* = enum
+    ## GraphQL AST node kinds based on the spec language section:
+    ## https://spec.graphql.org/draft/#sec-Language
+    ## 
+    ## The entire document syntax resume can be found at:
+    ## https://spec.graphql.org/draft/#sec-Document-Syntax
+    gnkEmpty                        ## Helper for empty leafs
+    gnkName                         ## https://spec.graphql.org/draft/#Name
+    gnkDocument
+    gnkIntValue                     ## https://spec.graphql.org/draft/#sec-Int-Value
+    gnkFloatValue                   ## https://spec.graphql.org/draft/#sec-Float-Value
+    gnkStringValue                  ## https://spec.graphql.org/draft/#sec-String-Value
+    gnkBooleanValue                 ## https://spec.graphql.org/draft/#sec-Boolean-Value
+    gnkNullValue                    ## https://spec.graphql.org/draft/#sec-Null-Value
+    gnkEnumValue                    ## https://spec.graphql.org/draft/#sec-Enum-Value
+    gnkListValue                    ## https://spec.graphql.org/draft/#ListValue
+    gnkObjectValue                  ## https://spec.graphql.org/draft/#ObjectValue
+    gnkOperationDefinition          ## https://spec.graphql.org/draft/#OperationDefinition
+    gnkOperationType                ## https://spec.graphql.org/draft/#OperationType
+    gnkVariableDefinition           ## https://spec.graphql.org/draft/#VariableDefinition
+    gnkVariable                     ## https://spec.graphql.org/draft/#Variable
+    gnkSelectionSet                 ## https://spec.graphql.org/draft/#SelectionSet
+    gnkField                        ## https://spec.graphql.org/draft/#Field
+    gnkArgument                     ## https://spec.graphql.org/draft/#Argument
+    gnkFragmentSpread               ## https://spec.graphql.org/draft/#FragmentSpread
+    gnkInlineFragment               ## https://spec.graphql.org/draft/#InlineFragment
+    gnkFragmentDefinition           ## https://spec.graphql.org/draft/#FragmentDefinition
+    gnkObjectField                  ## https://spec.graphql.org/draft/#ObjectField
+    gnkDirective                    ## https://spec.graphql.org/draft/#Directive
+    gnkNamedType                    ## https://spec.graphql.org/draft/#NamedType
+    gnkListType                     ## https://spec.graphql.org/draft/#ListType
+    gnkNonNullType                  ## https://spec.graphql.org/draft/#NonNullType
+    gnkSchemaDefinition             ## https://spec.graphql.org/draft/#SchemaDefinition
+    gnkOperationTypeDefinition      ## https://spec.graphql.org/draft/#RootOperationTypeDefinition
+    gnkScalarTypeDefinition         ## https://spec.graphql.org/draft/#ScalarTypeDefinition
+    gnkObjectTypeDefinition         ## https://spec.graphql.org/draft/#ObjectTypeDefinition
+    gnkFieldDefinition              ## https://spec.graphql.org/draft/#FieldDefinition
+    gnkInputValueDefinition         ## https://spec.graphql.org/draft/#InputValueDefinition
+    gnkInterfaceTypeDefinition      ## https://spec.graphql.org/draft/#InterfaceTypeDefinition
+    gnkUnionTypeDefinition          ## https://spec.graphql.org/draft/#UnionTypeDefinition
+    gnkEnumTypeDefinition           ## https://spec.graphql.org/draft/#EnumTypeDefinition
+    gnkEnumValueDefinition          ## https://spec.graphql.org/draft/#EnumValueDefinition
+    gnkInputObjectTypeDefinition    ## https://spec.graphql.org/draft/#InputObjectTypeDefinition
+    gnkDirectiveDefinition          ## https://spec.graphql.org/draft/#DirectiveDefinition
+    gnkSchemaExtension              ## https://spec.graphql.org/draft/#SchemaExtension
+    gnkScalarTypeExtension          ## https://spec.graphql.org/draft/#ScalarTypeExtension
+    gnkObjectTypeExtension          ## https://spec.graphql.org/draft/#ObjectTypeExtension
+    gnkInterfaceTypeExtension       ## https://spec.graphql.org/draft/#InterfaceTypeExtension
+    gnkUnionTypeExtension           ## https://spec.graphql.org/draft/#UnionTypeExtension
+    gnkEnumTypeExtension            ## https://spec.graphql.org/draft/#EnumTypeExtension
+    gnkInputObjectTypeExtension     ## https://spec.graphql.org/draft/#InputObjectTypeExtension
+    gnkVariableDefinitionList       ## https://spec.graphql.org/draft/#VariableDefinitions
+    ## Extra Kind Definitions
+    gnkArgumentList                 ## https://spec.graphql.org/draft/#Arguments
+    gnkDirectiveList                ## https://spec.graphql.org/draft/#Directives
+    gnkOperationTypeDefinitionList  ## Helper to group a list of operation type definition nodes
+    gnkFieldDefinitionList          ## https://spec.graphql.org/draft/#FieldsDefinition
+    gnkArgumentsDefinition          ## https://spec.graphql.org/draft/#ArgumentsDefinition
+    gnkImplementsInterfaces         ## A helper based on https://spec.graphql.org/draft/#ImplementsInterfaces
+    gnkUnionMemberTypes             ## https://spec.graphql.org/draft/#UnionMemberTypes
+    gnkEnumValueDefinitionList      ## https://spec.graphql.org/draft/#EnumValuesDefinition
+    gnkInputFieldsDefinition        ## https://spec.graphql.org/draft/#InputFieldsDefinition
+    gnkDirectiveLocations           ## https://spec.graphql.org/draft/#DirectiveLocations
 
 
 type
-  ## Base AST Node
-  Node* = ref object of RootObj
+  GraphNode* = ref object
     loc*: Location
-
-  ## Name Section
-  ## https://spec.graphql.org/draft/#sec-Names
-  NameNode* = ref object of Node
-    value*: string
-
-  ## Input Values Section
-  ## https://spec.graphql.org/draft/#sec-Input-Values
-  ObjectFieldNode* = ref object of Node
-    name*: NameNode
-    value*: ValueNode
-
-  ValueNodeKind* = enum
-    VariableNode
-    IntValueNode
-    FloatValueNode
-    StringValueNode
-    BooleanValueNode
-    NullValueNode
-    EnumValueNode
-    ListValueNode
-    ObjectValueNode
-  
-  ValueNode* = ref object of Node
-    case kind*: ValueNodeKind
-    of VariableNode:
-      name*: NameNode
-    of IntValueNode, FloatValueNode, EnumValueNode:
-      strValue*: string
-    of StringValueNode:
+    case kind*: GraphNodeKind
+    of gnkName:
+      ##[
+        GraphQL Documents are full of named things:
+        operations, fields, arguments, types, directives, fragments, and variables.
+        All names must follow the same grammatical form.
+        See more at: https://spec.graphql.org/draft/#sec-Names
+      ]##
       value*: string
-      `block`*: bool
-    of BooleanValueNode:
+    of gnkIntValue:
+      ##[
+        An IntValue is specified without a decimal point 
+        or exponent but may be negative (ex. -123).
+        It must not have any leading 0.
+        See more at: https://spec.graphql.org/draft/#sec-Int-Value
+      ]##
+      intValue*: string
+    of gnkFloatValue:
+      ##[
+        A FloatValue includes either a decimal point (ex. 1.0)
+        or an exponent (ex. 1e50) or both (ex. 6.0221413e23)
+        and may be negative. Like IntValue, it also must not 
+        have any leading 0.
+        See more at: https://spec.graphql.org/draft/#sec-Float-Value
+      ]##
+      floatValue*: string
+    of gnkStringValue:
+      ##[
+        Strings are sequences of characters wrapped 
+        in quotation marks (U+0022). (ex. "Hello World").
+        White space and other otherwise‐ignored characters
+        are significant within a string value.
+        https://spec.graphql.org/draft/#sec-String-Value
+      ]##
+      strValue*: string
+      isBlockString*: bool
+    of gnkBooleanValue:
+      ##[
+        The two keywords true and false represent the two boolean values.
+        https://spec.graphql.org/draft/#sec-Boolean-Value
+      ]##
       boolValue*: bool
-    of NullValueNode:
+    of gnkNullValue, gnkEmpty:
+      ##[
+        Null values are represented as the keyword null.
+        In Nim, discard is used as this node has no
+        additional fields.
+        https://spec.graphql.org/draft/#sec-Null-Value
+      ]##
       discard
-    of ListValueNode:
-      values*: seq[ValueNode]
-    of ObjectValueNode:
-      fields*: seq[ObjectFieldNode]
-
-  ## Document Section
-  ## https://spec.graphql.org/draft/#sec-Document
-  DefinitionNode* = ref object of Node
-  
-  DocumentNode* = ref object of Node ## Document AST Node
-    definitions*: seq[DefinitionNode]
-
-  ArgumentNode* = ref object of Node
-    name*: NameNode
-    value*: ValueNode
-
-  OperationTypeNode* = enum
-    ## There are three types of operations that GraphQL models
-    ## - query: a read‐only fetch.
-    ## - mutation: a write followed by a fetch.
-    ## - subscription: a long‐lived request that fetches 
-    ##   data in response to source events.
-    ## https://spec.graphql.org/draft/#sec-Language.Operations
-    QUERY = "query"
-    MUTATION = "mutation"
-    SUBSCRIPTION = "subscription"
-
-  ## Selection Sets Section
-  ## https://spec.graphql.org/draft/#sec-Selection-Sets
-  SelectionSetNode* = ref object of Node
-    selections*: seq[SelectionNode]
-
-  SelectionNodeKind* = enum
-    FieldNode
-    FragmentSpreadNode
-    InlineFragmentNode
-
-  SelectionNode* = ref object of Node
-    name*: NameNode ## Does not exist on InlineFragmentNode
-    directives*: seq[DirectiveNode]
-    selectionSet*: SelectionSetNode ## Does not exist on FragmentSpreadNode
-    case kind*: SelectionNodeKind
-    of FieldNode:
-      ## https://spec.graphql.org/draft/#sec-Language.Fields
-      alias*: NameNode
-      arguments*: seq[ArgumentNode]
-    of FragmentSpreadNode:
-      ## https://spec.graphql.org/draft/#sec-Language.Fragments
-      discard
-    of InlineFragmentNode:
-      ## https://spec.graphql.org/draft/#sec-Inline-Fragments
-      typeCondition*: TypeNode
-
-
-  ## Directives Section
-  ## https://spec.graphql.org/draft/#sec-Language.Directives
-  DirectiveNode* = ref object of Node
-    name*: NameNode
-    arguments*: seq[ArgumentNode]
-
-  ## Type References Section
-  ## https://spec.graphql.org/draft/#sec-Type-References
-  TypeNodeKind* = enum
-    NamedTypeNode
-    ListTypeNode
-    NonNullTypeNode
-  TypeNode* = ref object of Node
-    case kind*: TypeNodeKind
-    of NamedTypeNode:
-      name*: NameNode
-    of ListTypeNode, NonNullTypeNode:
-      `type`*: TypeNode
-
-  ## Objects Section
-  ## https://spec.graphql.org/draft/#sec-Objects
-  FieldDefinitionNode* = ref object of Node
-    description*: ValueNode
-    name*: NameNode
-    directives*: seq[DirectiveNode]
-    arguments*: seq[InputValueDefinitionNode]
-    `type`*: TypeNode
-  
-  ## Field Arguments Section
-  ## https://spec.graphql.org/draft/#sec-Field-Arguments
-  InputValueDefinitionNode* = ref object of Node
-    description*: ValueNode
-    name*: NameNode
-    directives*: seq[DirectiveNode]
-    `type`*: TypeNode
-    defaultValue*: ValueNode
-
-  ## Type Definition Section
-  ## https://spec.graphql.org/draft/#sec-Types
-  TypeDefinitionNodeKind* = enum
-    ScalarTypeDefinitionNode
-    ObjectTypeDefinitionNode
-    InterfaceTypeDefinitionNode
-    UnionTypeDefinitionNode
-    EnumTypeDefinitionNode
-    InputObjectTypeDefinitionNode
-
-  ## Enum Section
-  ## https://spec.graphql.org/draft/#sec-Enums
-  EnumValueDefinitionNode* = ref object of Node
-    name*: NameNode
-    description*: ValueNode
-    directives*: seq[DirectiveNode]
-
-  ## Type System Definition Section
-  ## https://spec.graphql.org/draft/#sec-Type-System
-  OperationTypeDefinitionNode* = ref object of Node
-    operation*: OperationTypeNode
-    `type`*: TypeNode
-
-  TypeSystemDefinitionNodeKind* = enum
-    SchemaDefinitionNode
-    TypeDefinitionNode
-    DirectiveDefinitionNode
-
-  TypeSystemDefinitionNode* = ref object of DefinitionNode
-    description*: ValueNode
-    name*: NameNode ## Does not exist on SchemaDefinitionNode
-    directives*: seq[DirectiveNode] ## Does not exist on DirectiveDefinitionNode
-    case kind*: TypeSystemDefinitionNodeKind
-    of SchemaDefinitionNode:
-      ## https://spec.graphql.org/draft/#sec-Schema
-      operationTypes*: seq[OperationTypeDefinitionNode]
-    of TypeDefinitionNode:
-      ## https://spec.graphql.org/draft/#sec-Types
-      case tdKind*: TypeDefinitionNodeKind
-      of ScalarTypeDefinitionNode:
-        discard
-      of ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode:
-        interfaces*: seq[TypeNode]
-        fields*: seq[FieldDefinitionNode]
-      of UnionTypeDefinitionNode:
-        types*: seq[TypeNode]
-      of EnumTypeDefinitionNode:
-        values*: seq[EnumValueDefinitionNode]
-      of InputObjectTypeDefinitionNode:
-        fieldsDef*: seq[InputValueDefinitionNode]
-
-    of DirectiveDefinitionNode:
-      ## https://spec.graphql.org/draft/#sec-Type-System.Directives
-      arguments*: seq[InputValueDefinitionNode]
-      repeatable*: bool
-      locations*: seq[NameNode]
-
-
-type
-  # ----- Forward declarations -----
-  # Document
-  # DefinitionNode* = ref object of Node ## Base Definition Node
-  # Values
-  # ValueNode* = ref object of Node 
-  # VariableNode* = ref object of ValueNode
-  #   name*: NameNode
-  # # Document
-  # ArgumentNode* = ref object of Node ## Argument AST Node
-  #   name*: NameNode
-  #   value*: ValueNode
-  # Directives
-  # DirectiveNode* = ref object of Node ## Directive AST Node
-  #   name*: NameNode
-  #   arguments*: seq[ArgumentNode]
-  ##[
-    Additional type to simulate union type like in Python
-    or NamedTypeNode | ListTypeNode in TypeScript
-    Check the link below for the reasoning behind this:
-    https://forum.nim-lang.org/t/4406#27516
-  ]##
-  # NonNullablesTypes* = ref object of TypeNode
-  # NamedTypeNode* = ref object of NonNullablesTypes
-  #   name*: NameNode
-  # ----- Normal Declarations -----
-  # Document
-  # DocumentNode* = ref object of Node ## Document AST Node
-  #   definitions*: seq[DefinitionNode]
-  VariableDefinitionNode* = ref object of Node
-    variable*: ValueNode
-    `type`*: TypeNode
-    defaultValue*: ValueNode
-    directives*: seq[DirectiveNode]
-  # SelectionNode* = ref object of Node
-  #   directives*: seq[DirectiveNode]
-  # SelectionSetNode* = ref object of Node
-  #   selections*: seq[SelectionNode]
-  ExecutableDefinitionNode* = ref object of DefinitionNode
-    name*: NameNode
-    directives*: seq[DirectiveNode]
-    variableDefinitions*: seq[VariableDefinitionNode]
-    selectionSet*: SelectionSetNode
-  # OperationTypeNode* = enum
-  #   ##[
-  #     Operation Type Enum for most operation definition
-  #     node types.
-  #   ]##
-  #   QUERY = "query"
-  #   MUTATION = "mutation"
-  #   SUBSCRIPTION = "subscription"
-  OperationDefinitionNode* = ref object of ExecutableDefinitionNode
-    operation*: OperationTypeNode
-  # FieldNode* = ref object of SelectionNode
-  #   alias*: NameNode
-  #   name*: NameNode
-  #   arguments*: seq[ArgumentNode]
-  #   selectionSet*: SelectionSetNode
-  # # Fragments
-  # FragmentSpreadNode* = ref object of SelectionNode
-  #   name*: NameNode
-  # InlineFragmentNode* = ref object of SelectionNode
-  #   typeCondition*: TypeNode
-  #   selectionSet*: SelectionSetNode
-  FragmentDefinitionNode* = ref object of ExecutableDefinitionNode
-    typeCondition*: TypeNode
-  # Values
-  # IntValueNode* = ref object of ValueNode
-  #   value*: string
-  # FloatValueNode* = ref object of ValueNode
-  #   value*: string
-  # StringValueNode* = ref object of ValueNode
-  #   value*: string
-  #   `block`*: bool
-  # BooleanValueNode* = ref object of ValueNode
-  #   value*: bool
-  # NullValueNode* = ref object of ValueNode
-  # EnumValueNode* = ref object of ValueNode
-  #   value*: string
-  # ListValueNode* = ref object of ValueNode
-  #   values*: seq[ValueNode]
-  # ObjectFieldNode* = ref object of ValueNode
-  #   name*: NameNode
-  #   value*: ValueNode
-  # ObjectValueNode* = ref object of ValueNode
-  #   fields*: seq[ObjectFieldNode]
-  # Type Reference
-  # ListTypeNode* = ref object of NonNullablesTypes
-  #   `type`*: TypeNode
-  # NonNullTypeNode* = ref object of TypeNode
-  #   `type`*: NonNullablesTypes
-  # Type System Definition
-  # TypeSystemDefinitionNode* = ref object of DefinitionNode
-  # OperationTypeDefinitionNode* = ref object of Node
-  #   operation*: OperationTypeNode
-  #   `type`*: TypeNode
-  # SchemaDefinitionNode* = ref object of TypeSystemDefinitionNode
-  #   description*: ValueNode
-  #   directives*: seq[DirectiveNode]
-  #   operationTypes*: seq[OperationTypeDefinitionNode]
-  # Type Definition
-  # TypeDefinitionNode* = ref object of TypeSystemDefinitionNode
-  #   description*: ValueNode
-  #   directives*: seq[DirectiveNode]
-  #   name*: NameNode
-  # ScalarTypeDefinitionNode* = ref object of TypeDefinitionNode
-  # InputValueDefinitionNode* = ref object of DefinitionNode
-  #   description*: ValueNode
-  #   name*: NameNode
-  #   directives*: seq[DirectiveNode]
-  #   `type`*: TypeNode
-  #   defaultValue*: ValueNode
-  # FieldDefinitionNode* = ref object of DefinitionNode
-  #   description*: ValueNode
-  #   name*: NameNode
-  #   directives*: seq[DirectiveNode]
-  #   arguments*: seq[InputValueDefinitionNode]
-  #   `type`*: TypeNode
-  # ObjectTypeDefinitionNode* = ref object of TypeDefinitionNode
-  #   interfaces*: seq[TypeNode]
-  #   fields*: seq[FieldDefinitionNode]
-  # InterfaceTypeDefinitionNode* = ref object of TypeDefinitionNode
-  #   fields*: seq[FieldDefinitionNode]
-  #   interfaces*: seq[TypeNode]
-  # UnionTypeDefinitionNode* = ref object of TypeDefinitionNode
-  #   types*: seq[TypeNode]
-  # EnumValueDefinitionNode* = ref object of TypeDefinitionNode
-  # EnumTypeDefinitionNode* = ref object of TypeDefinitionNode
-  #   values*: seq[EnumValueDefinitionNode]
-  # InputObjectTypeDefinitionNode* = ref object of TypeDefinitionNode
-  #   fields*: seq[InputValueDefinitionNode]
-  # Directive Definitions
-  # DirectiveDefinitionNode* = ref object of TypeSystemDefinitionNode
-  #   description*: ValueNode
-  #   name*: NameNode
-  #   arguments*: seq[InputValueDefinitionNode]
-  #   repeatable*: bool
-  #   locations*: seq[NameNode]
-  ##[
-    Additional type to simulate union type
-    SchemaExtensionNode | TypeExtensionNode
-  ]##
-  TypeSystemExtensionNode* = ref object of DefinitionNode
-    directives*: seq[DirectiveNode]
-  # Type System Extensions
-  SchemaExtensionNode* = ref object of TypeSystemExtensionNode
-    operationTypes*: seq[OperationTypeDefinitionNode]
-  # Type Extensions
-  TypeExtensionNode* = ref object of TypeSystemExtensionNode
-    name*: NameNode
-  ScalarTypeExtensionNode* = ref object of TypeExtensionNode
-  ObjectTypeExtensionNode* = ref object of TypeExtensionNode
-    interfaces*: seq[TypeNode]
-    fields*: seq[FieldDefinitionNode]
-  InterfaceTypeExtensionNode* = ref object of TypeExtensionNode
-    interfaces*: seq[TypeNode]
-    fields*: seq[FieldDefinitionNode]
-  UnionTypeExtensionNode* = ref object of TypeExtensionNode
-    types*: seq[TypeNode]
-  EnumTypeExtensionNode* = ref object of TypeExtensionNode
-    values*: seq[EnumValueDefinitionNode]
-  InputObjectTypeExtensionNode* = ref object of TypeExtensionNode
-    fields*: seq[InputValueDefinitionNode]
+    of gnkEnumValue:
+      ##[
+        Enum values are represented as unquoted names (ex. MOBILE_WEB).
+        https://spec.graphql.org/draft/#sec-Enum-Value
+      ]##
+      enumValue*: string
+    of gnkOperationType:
+      ##[
+        There are three types of operations that GraphQL models
+          - query: a read‐only fetch.
+          - mutation: a write followed by a fetch.
+          - subscription: a long‐lived request that fetches data in response to source events.
+        https://spec.graphql.org/draft/#sec-Language.Operations
+      ]##
+      operation*: GraphOperationTypeKind
+    else:
+      children*: seq[GraphNode]

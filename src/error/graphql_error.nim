@@ -31,7 +31,7 @@ type GraphQLError* = ref object of CatchableError
     Only included for errors during execution.
   ]#
 
-  nodes*: seq[Node]
+  nodes*: seq[GraphNode]
   #[
     A list of GraphQL AST Nodes corresponding to this error
   ]#
@@ -68,7 +68,7 @@ type GraphQLError* = ref object of CatchableError
 
 proc newGraphQLError*(
   message: string,
-  nodes: Option[seq[Node]] or Option[Node] = none(Node),
+  nodes: Option[seq[GraphNode]] or Option[GraphNode] = none(GraphNode),
   source: Option[Source] = none(Source),
   positions: Option[seq[int]] = none(seq[int]),
   path: seq[string] = @[],
@@ -78,10 +78,10 @@ proc newGraphQLError*(
   new(result)
   result.msg = message
 
-  var nodesCopy: seq[Node]
+  var nodesCopy: seq[GraphNode]
   if nodes.isSome:
     let nodesVal = nodes.get()
-    when nodesVal is Node:
+    when nodesVal is GraphNode:
       nodesCopy = @[nodesVal]
     else:
       nodesCopy = nodesVal
@@ -90,7 +90,7 @@ proc newGraphQLError*(
   if source.isSome:
     result.source = source.get()
   if source.isNone and nodes.isSome:
-    let node: Node = nodesCopy[0]
+    let node: GraphNode = nodesCopy[0]
     if not node.isNil and not node.loc.isNil and not node.loc.source.isNil:
       result.source = node.loc.source
   

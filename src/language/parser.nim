@@ -1,4 +1,4 @@
-import strformat, strutils, options
+import options, strformat, strutils
 
 import language/ast
 import language/directive_location
@@ -65,79 +65,79 @@ proc newParser*(
 proc expectToken(self: Parser, kind: TokenKind): Token
 
 # Base Section
-proc parseName(self: Parser): NameNode
-proc parseDocument(self: Parser): DocumentNode
+proc parseName(self: Parser): GraphNode
+proc parseDocument(self: Parser): GraphNode
 
 # Document Section
-proc parseDefinition(self: Parser): DefinitionNode
-proc parseOperationDefinition(self: Parser): OperationDefinitionNode
-proc parseOperationType(self: Parser): OperationTypeNode
-proc parseVariableDefinitions(self: Parser): seq[VariableDefinitionNode]
-proc parseVariableDefinition(self: Parser): VariableDefinitionNode
-proc parseVariable(self: Parser): ValueNode
-proc parseSelectionSet(self: Parser): SelectionSetNode
-proc parseSelection(self: Parser): SelectionNode
-proc parseField(self: Parser): SelectionNode
-proc parseArguments(self: Parser, isConst: bool): seq[ArgumentNode]
-proc parseArgument(self: Parser): ArgumentNode
-proc parseConstArgument(self: Parser): ArgumentNode
+proc parseDefinition(self: Parser): GraphNode
+proc parseOperationDefinition(self: Parser): GraphNode
+proc parseOperationType(self: Parser): GraphNode
+proc parseVariableDefinitions(self: Parser): GraphNode
+proc parseVariableDefinition(self: Parser): GraphNode
+proc parseVariable(self: Parser): GraphNode
+proc parseSelectionSet(self: Parser): GraphNode
+proc parseSelection(self: Parser): GraphNode
+proc parseField(self: Parser): GraphNode
+proc parseArguments(self: Parser, isConst: bool): GraphNode
+proc parseArgument(self: Parser): GraphNode
+proc parseConstArgument(self: Parser): GraphNode
 
 # Fragments Section
-proc parseFragment(self: Parser): SelectionNode
-proc parseFragmentDefinition(self: Parser): FragmentDefinitionNode
-proc parseFragmentName(self: Parser): NameNode
-proc parseTypeCondition(self: Parser): TypeNode
+proc parseFragment(self: Parser): GraphNode
+proc parseFragmentDefinition(self: Parser): GraphNode
+proc parseFragmentName(self: Parser): GraphNode
+proc parseTypeCondition(self: Parser): GraphNode
 
 # Values Section
-proc parseValueLiteral(self: Parser, isConst: bool): ValueNode
-proc parseList(self: Parser, isConst: bool): ValueNode
-proc parseObjectField(self: Parser, isConst: bool): ObjectFieldNode
-proc parseObject(self: Parser, isConst: bool): ValueNode
-proc parseInt(self: Parser, isConst: bool = false): ValueNode
-proc parseFloat(self: Parser, isConst: bool = false): ValueNode
-proc parseStringLiteral(self: Parser, isConst: bool = false): ValueNode
-proc parseNamedValues(self: Parser, isConst: bool = false): ValueNode
-proc parseVariableValue(self: Parser, isConst: bool = false): ValueNode
+proc parseValueLiteral(self: Parser, isConst: bool): GraphNode
+proc parseListValue(self: Parser, isConst: bool): GraphNode
+proc parseObjectField(self: Parser, isConst: bool): GraphNode
+proc parseObjectValue(self: Parser, isConst: bool): GraphNode
+proc parseIntValue(self: Parser, isConst: bool = false): GraphNode
+proc parseFloatValue(self: Parser, isConst: bool = false): GraphNode
+proc parseStringValue(self: Parser, isConst: bool = false): GraphNode
+proc parseNamedValues(self: Parser, isConst: bool = false): GraphNode
+proc parseVariableValue(self: Parser, isConst: bool = false): GraphNode
 
 # Directives Section
-proc parseDirectives(self: Parser, isConst: bool): seq[DirectiveNode]
-proc parseDirective(self: Parser, isConst: bool): DirectiveNode
+proc parseDirectives(self: Parser, isConst: bool): GraphNode
+proc parseDirective(self: Parser, isConst: bool): GraphNode
 
 # Types Section
-proc parseTypeReference(self: Parser): TypeNode
-proc parseNamedType(self: Parser): TypeNode
+proc parseTypeReference(self: Parser): GraphNode
+proc parseNamedType(self: Parser): GraphNode
 
 # Type Definition Section
-proc parseTypeSystemDefinition(self: Parser): TypeSystemDefinitionNode
-proc parseDescription(self: Parser): ValueNode
-proc parseSchemaDefinition(self: Parser): TypeSystemDefinitionNode
-proc parseOperationTypeDefinition(self: Parser): OperationTypeDefinitionNode
-proc parseScalarTypeDefinition(self: Parser): TypeSystemDefinitionNode
-proc parseObjectTypeDefinition(self: Parser): TypeSystemDefinitionNode
-proc parseImplementsInterfaces(self: Parser): seq[TypeNode]
-proc parseFieldsDefinition(self: Parser): seq[FieldDefinitionNode]
-proc parseFieldDefinition(self: Parser): FieldDefinitionNode
-proc parseArgumentDefs(self: Parser): seq[InputValueDefinitionNode]
-proc parseInputValueDef(self: Parser): InputValueDefinitionNode
-proc parseInterfaceTypeDefinition(self: Parser): TypeSystemDefinitionNode
-proc parseUnionTypeDefinition(self: Parser): TypeSystemDefinitionNode
-proc parseUnionMemberTypes(self: Parser): seq[TypeNode]
-proc parseEnumTypeDefinition(self: Parser): TypeSystemDefinitionNode
-proc parseEnumValuesDefinition(self: Parser): seq[EnumValueDefinitionNode]
-proc parseEnumValueDefinition(self: Parser): EnumValueDefinitionNode
-proc parseInputObjectTypeDefinition(self: Parser): TypeSystemDefinitionNode
-proc parseInputFieldsDefinition(self: Parser): seq[InputValueDefinitionNode]
-proc parseTypeSystemExtension(self: Parser): TypeSystemExtensionNode
-proc parseSchemaExtension(self: Parser): SchemaExtensionNode
-proc parseScalarTypeExtension(self: Parser): ScalarTypeExtensionNode
-proc parseObjectTypeExtension(self: Parser): ObjectTypeExtensionNode
-proc parseInterfaceTypeExtension(self: Parser): InterfaceTypeExtensionNode
-proc parseUnionTypeExtension(self: Parser): UnionTypeExtensionNode
-proc parseEnumTypeExtension(self: Parser): EnumTypeExtensionNode
-proc parseInputObjectTypeExtension(self: Parser): InputObjectTypeExtensionNode
-proc parseDirectiveDefinition(self: Parser): TypeSystemDefinitionNode
-proc parseDirectiveLocations(self: Parser): seq[NameNode]
-proc parseDirectiveLocation(self: Parser): NameNode
+proc parseTypeSystemDefinition(self: Parser): GraphNode
+proc parseDescription(self: Parser): GraphNode
+proc parseSchemaDefinition(self: Parser): GraphNode
+proc parseOperationTypeDefinition(self: Parser): GraphNode
+proc parseScalarTypeDefinition(self: Parser): GraphNode
+proc parseObjectTypeDefinition(self: Parser): GraphNode
+proc parseImplementsInterfaces(self: Parser): GraphNode
+proc parseFieldsDefinition(self: Parser): GraphNode
+proc parseFieldDefinition(self: Parser): GraphNode
+proc parseArgumentDefs(self: Parser): GraphNode
+proc parseInputValueDef(self: Parser): GraphNode
+proc parseInterfaceTypeDefinition(self: Parser): GraphNode
+proc parseUnionTypeDefinition(self: Parser): GraphNode
+proc parseUnionMemberTypes(self: Parser): GraphNode
+proc parseEnumTypeDefinition(self: Parser): GraphNode
+proc parseEnumValuesDefinition(self: Parser): GraphNode
+proc parseEnumValueDefinition(self: Parser): GraphNode
+proc parseInputObjectTypeDefinition(self: Parser): GraphNode
+proc parseInputFieldsDefinition(self: Parser): GraphNode
+proc parseTypeSystemExtension(self: Parser): GraphNode
+proc parseSchemaExtension(self: Parser): GraphNode
+proc parseScalarTypeExtension(self: Parser): GraphNode
+proc parseObjectTypeExtension(self: Parser): GraphNode
+proc parseInterfaceTypeExtension(self: Parser): GraphNode
+proc parseUnionTypeExtension(self: Parser): GraphNode
+proc parseEnumTypeExtension(self: Parser): GraphNode
+proc parseInputObjectTypeExtension(self: Parser): GraphNode
+proc parseDirectiveDefinition(self: Parser): GraphNode
+proc parseDirectiveLocations(self: Parser): GraphNode
+proc parseDirectiveLocation(self: Parser): GraphNode
 
 ## Emulate Python "Partial" by using closures described by Varriount 
 ## on the devnotes doc.
@@ -152,7 +152,7 @@ proc parse*(
   source: Source or string,
   noLocation = false,
   experimentalFragmentVariables = false,
-): DocumentNode =
+): GraphNode =
   #[
     Given a GraphQL source, parse it into a Document.
 
@@ -186,7 +186,7 @@ proc parseValue*(
   source: Source or string,
   noLocation = false,
   experimentalFragmentVariables = false,
-): ValueNode =
+): GraphNode =
   ##[
     Parse the AST for a given string containing a GraphQL value.
 
@@ -213,7 +213,7 @@ proc parseType*(
   source: Source or string,
   noLocation = false,
   experimentalFragmentVariables = false,
-): TypeNode =
+): GraphNode =
   ##[
     Parse the AST for a given string containing a GraphQL Type.
 
@@ -240,13 +240,13 @@ proc parseType*(
 
 
 proc loc(self: Parser, startToken: Token): Location =
-  #[
+  ##[
     Return a location object.
 
     Used to identify the place in the source that created a given parsed object.
-  ]#
+  ]##
   if not self.noLocation:
-    let 
+    let
       endToken = self.lexer.lastToken
       source = self.lexer.source
     return newLocation(startToken, endToken, source)
@@ -254,9 +254,9 @@ proc loc(self: Parser, startToken: Token): Location =
 
 
 proc peek(self: Parser, kind: TokenKind): bool =
-  #[
+  ##[
     Determine if the next token is of a given kind
-  ]#
+  ]##
   return self.lexer.token.kind == kind
 
 
@@ -265,12 +265,12 @@ proc peekDescription(self: Parser): bool =
 
 
 proc expectToken(self: Parser, kind: TokenKind): Token =
-  #[
+  ##[
     Expect the next token to be of the given kind.
 
     If the next token is of the given kind, return that token after advancing
     the lexer. Otherwise, do not change the parser state and throw an error.
-  ]#
+  ]##
   let token = self.lexer.token
   if token.kind == kind:
     discard self.lexer.advance()
@@ -284,12 +284,12 @@ proc expectToken(self: Parser, kind: TokenKind): Token =
 
 
 proc expectOptionalToken(self: Parser, kind: TokenKind): Token =
-  #[
+  ##[
     Expect the next token optionally to be of the given kind.
 
     If the next token is of the given kind, return that token after advancing
     the lexer. Otherwise, do not change the parser state and return None.
-  ]#
+  ]##
   let token = self.lexer.token
   if token.kind == kind:
     discard self.lexer.advance()
@@ -317,12 +317,12 @@ proc expectKeyword(self: Parser, value: string): GraphQLSyntaxError =
 
 
 proc expectOptionalKeyword(self: Parser, value: string): bool =
-  #[
+  ##[
     Expect the next token optionally to be a given keyword.
 
     If the next token is a given keyword, return True after advancing the lexer.
     Otherwise, do not change the parser state and return False.
-  ]#
+  ]##
   let token = self.lexer.token
   if token.kind == TokenKind.NAME and token.value == value:
     discard self.lexer.advance()
@@ -332,9 +332,9 @@ proc expectOptionalKeyword(self: Parser, value: string): bool =
 
 
 proc unexpected(self: Parser, atToken: Option[Token] = none(Token)): GraphQLSyntaxError =
-  #[
+  ##[
     Create an error when an unexpected lexed token is encountered.
-  ]#
+  ]##
   let token: Token = if atToken.isSome: atToken.get() else: self.lexer.token
   return newGraphQLSyntaxError(
     self.lexer.source,
@@ -343,32 +343,32 @@ proc unexpected(self: Parser, atToken: Option[Token] = none(Token)): GraphQLSynt
   )
 
 
-proc anyNode[T](
+proc anyNode(
   self: Parser,
   openKind: TokenKind,
-  parseProc: proc (): T,
+  parseProc: proc (): GraphNode,
   closeKind: TokenKind
-): seq[T] =
-  #[
+): seq[GraphNode] =
+  ##[
     Fetch any matching nodes, possibly none.
 
     Returns a possibly empty list of parse nodes, determined by the `parse_fn`.
     This list begins with a lex token of `open_kind` and ends with a lex token of
     `close_kind`. Advances the parser to the next lex token after the closing token.
-  ]#
+  ]##
   discard self.expectToken(openKind)
-  var nodes: seq[T]
+  var nodes: seq[GraphNode]
   while self.expectOptionalToken(closeKind).isNil:
     nodes.add(parseProc())
   return nodes
 
 
-proc optionalManyNode[T](
+proc optionalManyNode(
   self: Parser,
   openKind: TokenKind,
-  parseProc: proc(self: Parser): T,
+  parseProc: proc(self: Parser): GraphNode,
   closeKind: TokenKind
-): seq[T] =
+): seq[GraphNode] =
   ##[
     Fetch matching nodes, maybe none.
 
@@ -378,19 +378,19 @@ proc optionalManyNode[T](
     `close_kind`. Advances the parser to the next lex token after the closing token.
   ]##
   if not self.expectOptionalToken(openKind).isNil:
-    var nodes: seq[T] = @[self.parseProc()]
+    var nodes: seq[GraphNode] = @[self.parseProc()]
     while self.expectOptionalToken(closeKind).isNil:
       nodes.add(self.parseProc())
     return nodes
   return @[]
 
 
-proc manyNode[T](
+proc manyNode(
   self: Parser,
   openKind: TokenKind,
-  parseProc: proc(self: Parser): T,
+  parseProc: proc(self: Parser): GraphNode,
   closeKind: TokenKind
-): seq[T] =
+): seq[GraphNode] =
   ##[
     Fetch matching nodes, at least one.
 
@@ -399,7 +399,7 @@ proc manyNode[T](
     `close_kind`. Advances the parser to the next lex token after the closing token.
   ]##
   discard self.expectToken(openKind)
-  var nodes: seq[T] = @[self.parseProc()]
+  var nodes: seq[GraphNode] = @[self.parseProc()]
   while self.expectOptionalToken(closeKind).isNil:
     nodes.add(self.parseProc())
   return nodes
@@ -408,31 +408,37 @@ proc manyNode[T](
 # Implement the parsing rules in the base section
 
 
-proc parseName(self: Parser): NameNode =
+proc parseEmpty(self: Parser, kind: GraphNodeKind): GraphNode =
+  let start = self.lexer.token
+  return GraphNode(kind: kind, loc: self.loc(start))
+
+
+proc parseName(self: Parser): GraphNode =
   ##[
     Convert a name lex token into a name parse node.
   ]##
   let token = self.expectToken(TokenKind.NAME)
-  return NameNode(value: token.value, loc: self.loc(token))
+  return GraphNode(kind: gnkName, value: token.value, loc: self.loc(token))
 
 
 # Implement the parsing rules in the Document section.
 
 
-proc parseDocument(self: Parser): DocumentNode =
+proc parseDocument(self: Parser): GraphNode =
   ##[
     Document: Definition
   ]##
   let start = self.lexer.token
-  return DocumentNode(
-    definitions: self.manyNode[:DefinitionNode](
+  return GraphNode(
+    kind: gnkDocument,
+    children: self.manyNode(
       TokenKind.SOF, parseDefinition, TokenKind.EOF
     ),
-    loc: self.loc(start)
+    loc: self.loc(start),
   )
 
 
-proc parseDefinition(self: Parser): DefinitionNode =
+proc parseDefinition(self: Parser): GraphNode =
   ##[
     Definition: ExecutableDefinition or TypeSystemDefinition/Extension
 
@@ -464,88 +470,115 @@ proc parseDefinition(self: Parser): DefinitionNode =
 # Implement the parsing rules in the Operations section.
 
 
-proc parseOperationDefinition(self: Parser): OperationDefinitionNode =
+proc parseOperationDefinition(self: Parser): GraphNode =
   ##[
     Operation Definition
   ]##
   let start = self.lexer.token
   if self.peek(TokenKind.BRACE_L):
-    return OperationDefinitionNode(
-      operation: OperationTypeNode.QUERY,
-      name: nil,
-      variableDefinitions: @[],
-      directives: @[],
-      selectionSet: self.parseSelectionSet(),
+    let op = GraphNode(
+      kind: gnkOperationType,
+      operation: GraphOperationTypeKind.gnkOperationQuery
+    )
+    return GraphNode(
+      kind: gnkOperationDefinition,
+      children: @[
+        op,
+        self.parseEmpty(gnkName),
+        self.parseEmpty(gnkVariableDefinitionList),
+        self.parseEmpty(gnkDirectiveList),
+        self.parseSelectionSet()
+      ],
       loc: self.loc(start)
     )
-  let operation = self.parseOperationType()
-  let name = if self.peek(TokenKind.NAME): self.parseName() else: nil
-  return OperationDefinitionNode(
-    operation: operation,
-    name: name,
-    variableDefinitions: self.parseVariableDefinitions(),
-    directives: self.parseDirectives(false),
-    selectionSet: self.parseSelectionSet(),
+  let
+    operation = self.parseOperationType()
+    name = if self.peek(TokenKind.NAME): self.parseName() else: self.parseEmpty(gnkName)
+  return GraphNode(
+    kind: gnkOperationDefinition,
+    children: @[
+      operation,
+      name,
+      self.parseVariableDefinitions(),
+      self.parseDirectives(false),
+      self.parseSelectionSet()
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseOperationType(self: Parser): OperationTypeNode =
+proc parseOperationType(self: Parser): GraphNode =
   ##[
     OperationType: one of query mutation subscription
   ]##
   let operationToken = self.expectToken(TokenKind.NAME)
   try:
-    return parseEnum[OperationTypeNode](operationToken.value)
+    let operationVal = parseEnum[GraphOperationTypeKind](operationToken.value)
+    return GraphNode(
+      kind: gnkOperationType,
+      operation: operationVal
+    )
   except ValueError:
     raise self.unexpected(some(operationToken))
 
 
-proc parseVariableDefinitions(self: Parser): seq[VariableDefinitionNode] =
+proc parseVariableDefinitions(self: Parser): GraphNode =
   #[
-    VariableDefinitions: (VariableDefinition+)
+    VariableDefinitions:
+      ( VariableDefinition[list] )
   ]#
-  return self.optionalManyNode[:VariableDefinitionNode](
-    TokenKind.PAREN_L,
-    parseVariableDefinition,
-    TokenKind.PAREN_R
+  let start = self.lexer.token
+  return GraphNode(
+    kind: gnkVariableDefinitionList,
+    children: self.optionalManyNode(
+      TokenKind.PAREN_L,
+      parseVariableDefinition,
+      TokenKind.PAREN_R
+    ),
+    loc: self.loc(start),
   )
 
 
-proc parseVariableDefinition(self: Parser): VariableDefinitionNode =
+proc parseVariableDefinition(self: Parser): GraphNode =
   ##[
-    VariableDefinition: Variable: Type DefaultValue? Directives[Const]?
+    VariableDefinition:
+      Variable : Type DefaultValue? Directives[Const]?
   ]##
   let start = self.lexer.token
-  return VariableDefinitionNode(
-    variable: self.parseVariable(),
-    `type`: if not self.expectToken(TokenKind.COLON).isNil: self.parseTypeReference() else: nil,
-    defaultValue: if not self.expectOptionalToken(TokenKind.EQUALS).isNil: self.parseValueLiteral(true) else: nil,
-    directives: self.parseDirectives(true),
-    loc: self.loc(start)
+  return GraphNode(
+    kind: gnkVariableDefinition,
+    children: @[
+      self.parseVariable(),
+      if not self.expectToken(TokenKind.COLON).isNil: self.parseTypeReference() else: self.parseEmpty(gnkEmpty),
+      if not self.expectOptionalToken(TokenKind.EQUALS).isNil: self.parseValueLiteral(true) else: self.parseEmpty(gnkEmpty),
+      self.parseDirectives(true)
+    ],
+    loc: self.loc(start),
   )
 
 
-proc parseVariable(self: Parser): ValueNode =
+proc parseVariable(self: Parser): GraphNode =
   ##[
     Variable: $Name
   ]##
   let start = self.lexer.token
   discard self.expectToken(TokenKind.DOLLAR)
-  return ValueNode(
-    kind: VariableNode,
-    name: self.parseName(),
+  return GraphNode(
+    kind: gnkVariable,
+    children: @[self.parseName()],
     loc: self.loc(start)
   )
 
 
-proc parseSelectionSet(self: Parser): SelectionSetNode =
+proc parseSelectionSet(self: Parser): GraphNode =
   ##[
-    SelectionSet: {Selection+}
+    SelectionSet:
+      **{** Selection[list] **}**
   ]##
   let start = self.lexer.token
-  return SelectionSetNode(
-    selections: self.manyNode[:SelectionNode](
+  return GraphNode(
+    kind: gnkSelectionSet,
+    children: self.manyNode(
       TokenKind.BRACE_L,
       parseSelection,
       TokenKind.BRACE_R
@@ -554,73 +587,88 @@ proc parseSelectionSet(self: Parser): SelectionSetNode =
   )
 
 
-proc parseSelection(self: Parser): SelectionNode =
+proc parseSelection(self: Parser): GraphNode =
   ##[
     Selection: Field or FragmentSpread or InlineFragment
   ]##
   return if self.peek(TokenKind.SPREAD): self.parseFragment() else: self.parseField()
 
 
-proc parseField(self: Parser): SelectionNode =
+proc parseField(self: Parser): GraphNode =
   ##[
-    Field: Alias? Name Arguments? Directives? SelectionSet?
+    Field:
+      Alias? Name Arguments? Directives? SelectionSet?
   ]##
-  let start = self.lexer.token
-  let nameOrAlias = self.parseName()
-  var alias: NameNode
-  var name: NameNode
+  let
+    start = self.lexer.token
+    nameOrAlias = self.parseName()
+  var
+    alias, name: GraphNode
   if not self.expectOptionalToken(TokenKind.COLON).isNil:
     alias = nameOrAlias
     name = self.parseName()
   else:
-    alias = nil
+    alias = self.parseEmpty(gnkEmpty)
     name = nameOrAlias
-  return SelectionNode(
-    kind: FieldNode,
-    alias: alias,
-    name: name,
-    arguments: self.parseArguments(false),
-    directives: self.parseDirectives(false),
-    selectionSet: if self.peek(TokenKind.BRACE_L): self.parseSelectionSet() else: nil,
+  return GraphNode(
+    kind: gnkField,
+    children: @[
+      alias,
+      name,
+      self.parseArguments(false),
+      self.parseDirectives(false),
+      if self.peek(TokenKind.BRACE_L): self.parseSelectionSet() else: self.parseEmpty(gnkSelectionSet)
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseArguments(self: Parser, isConst: bool): seq[ArgumentNode] =
+proc parseArguments(self: Parser, isConst: bool): GraphNode =
   ##[
-    Arguments[Const]: (Argument[?Const]+)
+    Arguments[Const]:
+      ( Argument[?Const]+ )
   ]##
-  let item = if isConst: parseConstArgument else: parseArgument
-  return self.optionalManyNode[:ArgumentNode](
-    TokenKind.PAREN_L,
-    item,
-    TokenKind.PAREN_R
+  let
+    start = self.lexer.token
+    item = if isConst: parseConstArgument else: parseArgument
+  return GraphNode(
+    kind: gnkArgumentList,
+    children: self.optionalManyNode(
+      TokenKind.PAREN_L,
+      item,
+      TokenKind.PAREN_R
+    ),
+    loc: self.loc(start)
   )
 
-proc parseArgument(self: Parser): ArgumentNode =
+proc parseArgument(self: Parser): GraphNode =
   ##[
-    Argument: Name : Value
+    Argument:
+      Name : Value
   ]##
-  let start = self.lexer.token
-  let name = self.parseName()
+  let
+    start = self.lexer.token
+    name = self.parseName()
 
   discard self.expectToken(TokenKind.COLON)
-  return ArgumentNode(
-    name: name,
-    value: self.parseValueLiteral(false),
+  return GraphNode(
+    kind: gnkArgument,
+    children: @[name, self.parseValueLiteral(false)],
     loc: self.loc(start)
   )
 
 
-proc parseConstArgument(self: Parser): ArgumentNode =
+proc parseConstArgument(self: Parser): GraphNode =
   ##[
-    Argument[Const]: Name : Value[?Const]
+    Argument[Const]:
+      Name : Value[?Const]
   ]##
-  let start = self.lexer.token
-  let value = if not self.expectToken(TokenKind.COLON).isNil: self.parseValueLiteral(true) else: nil 
-  return ArgumentNode(
-    name: self.parseName(),
-    value: value,
+  let
+    start = self.lexer.token
+    value = if not self.expectToken(TokenKind.COLON).isNil: self.parseValueLiteral(true) else: self.parseEmpty(gnkEmpty) 
+  return GraphNode(
+    kind: gnkArgument,
+    children: @[self.parseName(), value],
     loc: self.loc(start)
   )
 
@@ -628,7 +676,7 @@ proc parseConstArgument(self: Parser): ArgumentNode =
 # Implement the parsing rules in the Fragments section.
 
 
-proc parseFragment(self: Parser): SelectionNode =
+proc parseFragment(self: Parser): GraphNode =
   ##[
     Corresponds to both FragmentSpread and InlineFragment in the spec.
 
@@ -640,42 +688,52 @@ proc parseFragment(self: Parser): SelectionNode =
 
   let hasTypeCondition = self.expectOptionalKeyword("on")
   if not hasTypeCondition and self.peek(TokenKind.NAME):
-    return SelectionNode(
-      kind: FragmentSpreadNode,
-      name: self.parseFragmentName(),
-      directives: self.parseDirectives(false),
+    return GraphNode(
+      kind: gnkFragmentSpread,
+      children: @[
+        self.parseFragmentName(),
+        self.parseDirectives(false)
+      ],
       loc: self.loc(start)
     )
-  else: discard
 
-  return SelectionNode(
-    kind: InlineFragmentNode,
-    typeCondition: if hasTypeCondition: self.parseNamedType() else: nil,
-    directives: self.parseDirectives(false),
-    selectionSet: self.parseSelectionSet(),
+  return GraphNode(
+    kind: gnkInlineFragment,
+    children: @[
+      if hasTypeCondition: self.parseNamedType() else: self.parseEmpty(gnkNamedType),
+      self.parseDirectives(false),
+      self.parseSelectionSet()
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseFragmentDefinition(self: Parser): FragmentDefinitionNode =
+proc parseFragmentDefinition(self: Parser): GraphNode =
   ##[
-    FragmentDefinition
+    FragmentDefinition:
+      *fragment* FragmentName TypeCondition Directives[opt] SelectionSet
+
+    FragmentName:
+      Name but not *on*
   ]##
   let start = self.lexer.token
   discard self.expectKeyword("fragment")
   ## Experimental support for defining variables within fragments changes
   ## the grammar of FragmentDefinition
-  return FragmentDefinitionNode(
-    name: self.parseFragmentName(),
-    variableDefinitions: if self.experimentalFragmentVariables: self.parseVariableDefinitions() else: @[],
-    typeCondition: self.parseTypeCondition(),
-    directives: self.parseDirectives(false),
-    selectionSet: self.parseSelectionSet(),
-    loc: self.loc(start),
+  return GraphNode(
+    kind: gnkFragmentDefinition,
+    children: @[
+      self.parseFragmentName(),
+      if self.experimentalFragmentVariables: self.parseVariableDefinitions() else: self.parseEmpty(gnkVariableDefinitionList),
+      self.parseTypeCondition(),
+      self.parseDirectives(false),
+      self.parseSelectionSet()
+    ],
+    loc: self.loc(start)
   )
 
 
-proc parseFragmentName(self: Parser): NameNode =
+proc parseFragmentName(self: Parser): GraphNode =
   ##[
     FragmentName: Name but not `on`
   ]##
@@ -684,7 +742,7 @@ proc parseFragmentName(self: Parser): NameNode =
   return self.parseName()
 
 
-proc parseTypeCondition(self: Parser): TypeNode =
+proc parseTypeCondition(self: Parser): GraphNode =
   ##[
     TypeCondition: NamedType
   ]##
@@ -695,19 +753,19 @@ proc parseTypeCondition(self: Parser): TypeNode =
 # Implement the parsing rules in the Values section.
 
 
-proc parseValueLiteral(self: Parser, isConst: bool): ValueNode =
+proc parseValueLiteral(self: Parser, isConst: bool): GraphNode =
   let kind = self.lexer.token.kind
   case kind
   of TokenKind.BRACKET_L:
-    return self.parseList(isConst)
+    return self.parseListValue(isConst)
   of TokenKind.BRACE_L:
-    return self.parseObject(isConst)
+    return self.parseObjectValue(isConst)
   of TokenKind.INT:
-    return self.parseInt(isConst)
+    return self.parseIntValue(isConst)
   of TokenKind.FLOAT:
-    return self.parseFloat(isConst)
+    return self.parseFloatValue(isConst)
   of TokenKind.STRING, TokenKind.BLOCK_STRING:
-    return self.parseStringLiteral()
+    return self.parseStringValue()
   of TokenKind.NAME:
     return self.parseNamedValues(isConst)
   of TokenKind.DOLLAR:
@@ -717,25 +775,25 @@ proc parseValueLiteral(self: Parser, isConst: bool): ValueNode =
   raise self.unexpected()
 
 
-proc parseStringLiteral(self: Parser, isConst: bool = false): ValueNode =
+proc parseStringValue(self: Parser, isConst: bool = false): GraphNode =
   let token = self.lexer.token
   discard self.lexer.advance()
-  return ValueNode(
-    kind: StringValueNode,
-    value: token.value,
-    `block`: token.kind == TokenKind.BLOCK_STRING,
+  return GraphNode(
+    kind: gnkStringValue,
+    strValue: token.value,
+    isBlockString: token.kind == TokenKind.BLOCK_STRING,
     loc: self.loc(token)
   )
 
 
-proc parseList(self: Parser, isConst: bool): ValueNode =
+proc parseListValue(self: Parser, isConst: bool): GraphNode =
   ##[
     ListValue[Const]
   ]##
   let start = self.lexer.token
-  return ValueNode(
-    kind: ListValueNode,
-    values: self.anyNode[:ValueNode](
+  return GraphNode(
+    kind: gnkListValue,
+    children: self.anyNode(
       TokenKind.BRACKET_L,
       partialValueLiteral(self, isConst),
       TokenKind.BRACKET_R
@@ -744,26 +802,28 @@ proc parseList(self: Parser, isConst: bool): ValueNode =
   )
 
 
-proc parseObjectField(self: Parser, isConst: bool): ObjectFieldNode =
-  let start = self.lexer.token
-  let name = self.parseName()
+proc parseObjectField(self: Parser, isConst: bool): GraphNode =
+  let
+    start = self.lexer.token
+    name = self.parseName()
   discard self.expectToken(TokenKind.COLON)
+  let value = self.parseValueLiteral(isConst)
 
-  return ObjectFieldNode(
-    name: name,
-    value: self.parseValueLiteral(isConst),
+  return GraphNode(
+    kind: gnkObjectField,
+    children: @[name, value],
     loc: self.loc(start)
   )
 
 
-proc parseObject(self: Parser, isConst: bool): ValueNode =
+proc parseObjectValue(self: Parser, isConst: bool): GraphNode =
   ##[
     ObjectValue[Const]
   ]##
   let start = self.lexer.token
-  return ValueNode(
-    kind: ObjectValueNode,
-    fields: self.anyNode[:ObjectFieldNode](
+  return GraphNode(
+    kind: gnkObjectValue,
+    children: self.anyNode(
       TokenKind.BRACE_L,
       partialObjectField(self, isConst),
       TokenKind.BRACE_R
@@ -772,43 +832,43 @@ proc parseObject(self: Parser, isConst: bool): ValueNode =
   )
 
 
-proc parseInt(self: Parser, isConst: bool = false): ValueNode =
+proc parseIntValue(self: Parser, isConst: bool = false): GraphNode =
   let token = self.lexer.token
   discard self.lexer.advance()
-  return ValueNode(
-    kind: IntValueNode,
-    strValue: token.value,
+  return GraphNode(
+    kind: gnkIntValue,
+    intValue: token.value,
     loc: self.loc(token)
   )
 
 
-proc parseFloat(self: Parser, isConst: bool = false): ValueNode =
+proc parseFloatValue(self: Parser, isConst: bool = false): GraphNode =
   let token = self.lexer.token
   discard self.lexer.advance()
-  return ValueNode(
-    kind: FloatValueNode,
-    strValue: token.value,
+  return GraphNode(
+    kind: gnkFloatValue,
+    floatValue: token.value,
     loc: self.loc(token)
   )
 
 
-proc parseNamedValues(self: Parser, isConst: bool = false): ValueNode =
+proc parseNamedValues(self: Parser, isConst: bool = false): GraphNode =
   let
     token = self.lexer.token
     value = token.value
   discard self.lexer.advance()
   case value
   of "true":
-    return ValueNode(kind: BooleanValueNode, boolValue: true, loc: self.loc(token))
+    return GraphNode(kind: gnkBooleanValue, loc: self.loc(token), boolValue: true)
   of "false":
-    return ValueNode(kind: BooleanValueNode, boolValue: false, loc: self.loc(token))
+    return GraphNode(kind: gnkBooleanValue, loc: self.loc(token), boolValue: false)
   of "null":
-    return ValueNode(kind: BooleanValueNode, loc: self.loc(token))
+    return GraphNode(kind: gnkNullValue, loc: self.loc(token))
   else:
-    return ValueNode(kind: EnumValueNode, strValue: value, loc: self.loc(token))
+    return GraphNode(kind: gnkEnumValue, loc: self.loc(token), enumValue: value)
 
 
-proc parseVariableValue(self: Parser, isConst: bool = false): ValueNode =
+proc parseVariableValue(self: Parser, isConst: bool = false): GraphNode =
   if not isConst:
     return self.parseVariable()
   raise self.unexpected()
@@ -817,25 +877,30 @@ proc parseVariableValue(self: Parser, isConst: bool = false): ValueNode =
 # Implement the parsing rules in the Directives section.
 
 
-proc parseDirectives(self: Parser, isConst: bool): seq[DirectiveNode] =
+proc parseDirectives(self: Parser, isConst: bool): GraphNode =
   ##[
-    Directives[Const]: Directive[?Const]+
+    Directives[Const]:
+      Directive[?Const]+
   ]##
-  var directives: seq[DirectiveNode]
+  let start = self.lexer.token
+  var directives: seq[GraphNode]
   while self.peek(TokenKind.AT):
     directives.add(self.parseDirective(isConst))
-  return directives
+  return GraphNode(kind: gnkDirectiveList, children: directives, loc: self.loc(start))
 
 
-proc parseDirective(self: Parser, isConst: bool): DirectiveNode =
+proc parseDirective(self: Parser, isConst: bool): GraphNode =
   ##[
     Directive[Const]: @ Name Arguments[?Const]?
   ]##
   let start = self.lexer.token
   discard self.expectToken(TokenKind.AT)
-  return DirectiveNode(
-    name: self.parseName(),
-    arguments: self.parseArguments(isConst),
+  return GraphNode(
+    kind: gnkDirective,
+    children: @[
+      self.parseName(),
+      self.parseArguments(isConst)
+    ],
     loc: self.loc(start)
   )
 
@@ -843,39 +908,39 @@ proc parseDirective(self: Parser, isConst: bool): DirectiveNode =
 # Implement the parsing rules in the Types section.
 
 
-proc parseTypeReference(self: Parser): TypeNode =
+proc parseTypeReference(self: Parser): GraphNode =
   ##[
     Type: NamedType or ListType or NonNullType
   ]##
   let start = self.lexer.token
-  var typeRef: TypeNode
+  var typeRef: GraphNode
   if not self.expectOptionalToken(TokenKind.BRACKET_L).isNil:
     typeRef = self.parseTypeReference()
     discard self.expectToken(TokenKind.BRACKET_R)
-    typeRef = TypeNode(
-      kind: ListTypeNode,
-      `type`: typeRef,
+    typeRef = GraphNode(
+      kind: gnkListType,
+      children: @[typeRef],
       loc: self.loc(start)
     )
   else:
     typeRef = self.parseNamedType()
   if not self.expectOptionalToken(TokenKind.BANG).isNil:
-    return TypeNode(
-      kind: NonNullTypeNode,
-      `type`: typeRef,
+    return GraphNode(
+      kind: gnkNonNullType,
+      children: @[typeRef],
       loc: self.loc(start)
     )
   return typeRef
     
 
-proc parseNamedType(self: Parser): TypeNode =
+proc parseNamedType(self: Parser): GraphNode =
   ##[
     NamedType: Name
   ]##
   let start = self.lexer.token
-  return TypeNode(
-    kind: NamedTypeNode,
-    name: self.parseName(),
+  return GraphNode(
+    kind: gnkNamedType,
+    children: @[self.parseName()],
     loc: self.loc(start)
   )
 
@@ -895,7 +960,7 @@ proc parseNamedType(self: Parser): TypeNode =
 ## - EnumTypeDefinition
 ## - InputObjectTypeDefinition
 
-proc parseTypeSystemDefinition(self: Parser): TypeSystemDefinitionNode =
+proc parseTypeSystemDefinition(self: Parser): GraphNode =
   ##[
     Many definitions begin with a description and require a lookahead.
   ]##
@@ -935,7 +1000,7 @@ proc parseTypeSystemDefinition(self: Parser): TypeSystemDefinitionNode =
 ## - EnumTypeExtension
 ## - InputObjectTypeDefinition
 
-proc parseTypeSystemExtension(self: Parser): TypeSystemExtensionNode =
+proc parseTypeSystemExtension(self: Parser): GraphNode =
   ##[
     TypeSystemExtension
   ]##
@@ -962,18 +1027,22 @@ proc parseTypeSystemExtension(self: Parser): TypeSystemExtensionNode =
 
 
 
-proc parseDescription(self: Parser): ValueNode =
+proc parseDescription(self: Parser): GraphNode =
   ##[
     Description: StringValue
   ]##
   if self.peekDescription():
-    return self.parseStringLiteral()
-  return nil
+    return self.parseStringValue()
+  return self.parseEmpty(gnkEmpty)
 
 
-proc parseSchemaDefinition(self: Parser): TypeSystemDefinitionNode =
+proc parseSchemaDefinition(self: Parser): GraphNode =
   ##[
-    SchemaDefinition
+    SchemaDefinition:
+      Description[opt] **schema** Directives[Const, opt] **{** RootOperationTypeDefinition[list] **}**
+
+    RootOperationTypeDefinition:
+      OperationType **:** NamedType
   ]##
   let
     start = self.lexer.token
@@ -981,21 +1050,27 @@ proc parseSchemaDefinition(self: Parser): TypeSystemDefinitionNode =
   discard self.expectKeyword("schema")
   let
     directives = self.parseDirectives(true)
-    operationTypes = self.manyNode[:OperationTypeDefinitionNode](
-      TokenKind.BRACE_L,
-      parseOperationTypeDefinition,
-      TokenKind.BRACE_R
+    otStart = self.lexer.token
+    operationTypes = GraphNode(
+      kind: gnkOperationTypeDefinitionList,
+      children: self.manyNode(
+        TokenKind.BRACE_L,
+        parseOperationTypeDefinition,
+        TokenKind.BRACE_R
+      ),
+      loc: self.loc(otStart)
     )
-  return TypeSystemDefinitionNode(
-    kind: SchemaDefinitionNode,
-    description: description,
-    directives: directives,
-    operationTypes: operationTypes,
+  return GraphNode(
+    kind: gnkSchemaDefinition,
+    children: @[
+      description,
+      directives,
+      operationTypes
+    ],
     loc: self.loc(start)
   )
 
-
-proc parseOperationTypeDefinition(self: Parser): OperationTypeDefinitionNode =
+proc parseOperationTypeDefinition(self: Parser): GraphNode =
   ##[
     OperationTypeDefinition: OperationType : NamedType
   ]##
@@ -1004,14 +1079,14 @@ proc parseOperationTypeDefinition(self: Parser): OperationTypeDefinitionNode =
     operation = self.parseOperationType()
   discard self.expectToken(TokenKind.COLON)
   let typeRef = self.parseNamedType()
-  return OperationTypeDefinitionNode(
-    operation: operation,
-    `type`: typeRef,
+  return GraphNode(
+    kind: gnkOperationTypeDefinition,
+    children: @[operation, typeRef],
     loc: self.loc(start)
   )
 
 
-proc parseScalarTypeDefinition(self: Parser): TypeSystemDefinitionNode =
+proc parseScalarTypeDefinition(self: Parser): GraphNode =
   ##[
     ScalarTypeDefinition: Description? scalar Name Directives[Const]?
   ]##
@@ -1022,17 +1097,18 @@ proc parseScalarTypeDefinition(self: Parser): TypeSystemDefinitionNode =
   let
     name = self.parseName()
     directives = self.parseDirectives(true)
-  return TypeSystemDefinitionNode(
-    kind: TypeDefinitionNode,
-    tdKind: ScalarTypeDefinitionNode,
-    description: description,
-    name: name,
-    directives: directives,
+  return GraphNode(
+    kind: gnkScalarTypeDefinition,
+    children: @[
+      description,
+      name,
+      directives
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseObjectTypeDefinition(self: Parser): TypeSystemDefinitionNode =
+proc parseObjectTypeDefinition(self: Parser): GraphNode =
   ##[
     ObjectTypeDefinition
   ]##
@@ -1045,24 +1121,25 @@ proc parseObjectTypeDefinition(self: Parser): TypeSystemDefinitionNode =
     interfaces = self.parseImplementsInterfaces()
     directives = self.parseDirectives(true)
     fields = self.parseFieldsDefinition()
-  return TypeSystemDefinitionNode(
-    kind: TypeDefinitionNode,
-    tdKind: ObjectTypeDefinitionNode,
-    description: description,
-    name: name,
-    interfaces: interfaces,
-    directives: directives,
-    fields: fields,
-    loc: self.loc(start),
+  return GraphNode(
+    kind: gnkObjectTypeDefinition,
+    children: @[
+      description,
+      name,
+      interfaces,
+      directives,
+      fields
+    ],
+    loc: self.loc(start)
   )
 
 
-
-proc parseImplementsInterfaces(self: Parser): seq[TypeNode] =
+proc parseImplementsInterfaces(self: Parser): GraphNode =
   ##[
     ImplementsInterfaces
   ]##
-  var types: seq[TypeNode]
+  var types: seq[GraphNode]
+  let start = self.lexer.token
   if self.expectOptionalKeyword("implements"):
     # optional leading ampersand
     discard self.expectOptionalToken(TokenKind.AMP)
@@ -1070,21 +1147,27 @@ proc parseImplementsInterfaces(self: Parser): seq[TypeNode] =
       types.add(self.parseNamedType())
       if not self.expectOptionalToken(TokenKind.AMP).isNil:
         break
-  return types
+  return GraphNode(kind: gnkImplementsInterfaces, children: types, loc: self.loc(start))
 
 
-proc parseFieldsDefinition(self: Parser): seq[FieldDefinitionNode] =
+proc parseFieldsDefinition(self: Parser): GraphNode =
   ##[
-    FieldsDefinition: {FieldDefinition+}
+    FieldsDefinition:
+      **{** FieldDefinition[list] **}**
   ]##
-  return self.optionalManyNode[:FieldDefinitionNode](
-    TokenKind.BRACE_L,
-    parseFieldDefinition,
-    TokenKind.BRACE_R
+  let start = self.lexer.token
+  return GraphNode(
+    kind: gnkFieldDefinitionList,
+    children: self.optionalManyNode(
+      TokenKind.BRACE_L,
+      parseFieldDefinition,
+      TokenKind.BRACE_R
+    ),
+    loc: self.loc(start)
   )
 
 
-proc parseFieldDefinition(self: Parser): FieldDefinitionNode =
+proc parseFieldDefinition(self: Parser): GraphNode =
   ##[
     FieldDefinition
   ]##
@@ -1092,33 +1175,42 @@ proc parseFieldDefinition(self: Parser): FieldDefinitionNode =
     start = self.lexer.token
     description = self.parseDescription()
     name = self.parseName()
-    args = self.parseArgumentDefs()
+    arguments = self.parseArgumentDefs()
   discard self.expectToken(TokenKind.COLON)
   let
     typeRef = self.parseTypeReference()
     directives = self.parseDirectives(true)
-  return FieldDefinitionNode(
-    description: description,
-    name: name,
-    arguments: args,
-    `type`: typeRef,
-    directives: directives,
+  return GraphNode(
+    kind: gnkFieldDefinition,
+    children: @[
+      description,
+      name,
+      arguments,
+      typeRef,
+      directives
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseArgumentDefs(self: Parser): seq[InputValueDefinitionNode] =
+proc parseArgumentDefs(self: Parser): GraphNode =
   ##[
-    ArgumentsDefinition: (InputValueDefinition+)
+    ArgumentsDefinition:
+      **(** InputValueDefinition[list] **)**
   ]##
-  return self.optionalManyNode[:InputValueDefinitionNode](
-    TokenKind.PAREN_L,
-    parseInputValueDef,
-    TokenKind.PAREN_R
+  let start = self.lexer.token
+  return GraphNode(
+    kind: gnkArgumentsDefinition,
+    children: self.optionalManyNode(
+      TokenKind.PAREN_L,
+      parseInputValueDef,
+      TokenKind.PAREN_R
+    ),
+    loc: self.loc(start)
   )
 
 
-proc parseInputValueDef(self: Parser): InputValueDefinitionNode =
+proc parseInputValueDef(self: Parser): GraphNode =
   ##[
     InputValueDefinition
   ]##
@@ -1129,19 +1221,22 @@ proc parseInputValueDef(self: Parser): InputValueDefinitionNode =
   discard self.expectToken(TokenKind.COLON)
   let
     typeRef = self.parseTypeReference()
-    defaultValue = if not self.expectOptionalToken(TokenKind.EQUALS).isNil: self.parseValueLiteral(true) else: nil
+    defaultValue = if not self.expectOptionalToken(TokenKind.EQUALS).isNil: self.parseValueLiteral(true) else: self.parseEmpty(gnkEmpty)
     directives = self.parseDirectives(true)
-  return InputValueDefinitionNode(
-    description: description,
-    name: name,
-    `type`: typeRef,
-    defaultValue: defaultValue,
-    directives: directives,
+  return GraphNode(
+    kind: gnkInputValueDefinition,
+    children: @[
+      name,
+      description,
+      typeRef,
+      defaultValue,
+      directives
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseInterfaceTypeDefinition(self: Parser): TypeSystemDefinitionNode =
+proc parseInterfaceTypeDefinition(self: Parser): GraphNode =
   ##[
     InterfaceTypeDefinition
   ]##
@@ -1154,19 +1249,20 @@ proc parseInterfaceTypeDefinition(self: Parser): TypeSystemDefinitionNode =
     interfaces = self.parseImplementsInterfaces()
     directives = self.parseDirectives(true)
     fields = self.parseFieldsDefinition()
-  return TypeSystemDefinitionNode(
-    kind: TypeDefinitionNode,
-    tdKind: InterfaceTypeDefinitionNode,
-    description: description,
-    name: name,
-    interfaces: interfaces,
-    directives: directives,
-    fields: fields,
+  return GraphNode(
+    kind: gnkInterfaceTypeDefinition,
+    children: @[
+      description,
+      name,
+      interfaces,
+      directives,
+      fields
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseUnionTypeDefinition(self: Parser): TypeSystemDefinitionNode =
+proc parseUnionTypeDefinition(self: Parser): GraphNode =
   ##[
     UnionTypeDefinition
   ]##
@@ -1178,22 +1274,24 @@ proc parseUnionTypeDefinition(self: Parser): TypeSystemDefinitionNode =
     name = self.parseName()
     directives = self.parseDirectives(true)
     types = self.parseUnionMemberTypes()
-  return TypeSystemDefinitionNode(
-    kind: TypeDefinitionNode,
-    tdKind: UnionTypeDefinitionNode,
-    description: description,
-    name: name,
-    directives: directives,
-    types: types,
+  return GraphNode(
+    kind: gnkUnionTypeDefinition,
+    children: @[
+      description,
+      name,
+      directives,
+      types
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseUnionMemberTypes(self: Parser): seq[TypeNode] =
+proc parseUnionMemberTypes(self: Parser): GraphNode =
   ##[
     UnionMemberTypes
   ]##
-  var types: seq[TypeNode]
+  let start = self.lexer.token
+  var types: seq[GraphNode]
   if not self.expectOptionalToken(TokenKind.EQUALS).isNil:
     # optional leading pipe
     discard self.expectOptionalToken(TokenKind.PIPE)
@@ -1201,10 +1299,10 @@ proc parseUnionMemberTypes(self: Parser): seq[TypeNode] =
     types.add(self.parseNamedType)
     if not self.expectOptionalToken(TokenKind.PIPE).isNil:
       break
-  return types
+  return GraphNode(kind: gnkUnionMemberTypes, children: types, loc: self.loc(start))
 
 
-proc parseEnumTypeDefinition(self: Parser): TypeSystemDefinitionNode =
+proc parseEnumTypeDefinition(self: Parser): GraphNode =
   ##[
     UnionTypeDefinition
   ]##
@@ -1216,46 +1314,57 @@ proc parseEnumTypeDefinition(self: Parser): TypeSystemDefinitionNode =
     name = self.parseName()
     directives = self.parseDirectives(true)
     values = self.parseEnumValuesDefinition()
-  return TypeSystemDefinitionNode(
-    kind: TypeDefinitionNode,
-    tdKind: EnumTypeDefinitionNode,
-    description: description,
-    name: name,
-    directives: directives,
-    values: values,
+  return GraphNode(
+    kind: gnkEnumTypeDefinition,
+    children: @[
+      description,
+      name,
+      directives,
+      values
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseEnumValuesDefinition(self: Parser): seq[EnumValueDefinitionNode] =
+proc parseEnumValuesDefinition(self: Parser): GraphNode =
   ##[
-    EnumValuesDefinition: {EnumValueDefinition+}
+    EnumValuesDefinition:
+      **{** EnumValueDefinition[list] **}**
   ]##
-  return self.optionalManyNode[:EnumValueDefinitionNode](
-    TokenKind.BRACE_L,
-    parseEnumValueDefinition,
-    TokenKind.BRACE_R
+  let start = self.lexer.token
+  return GraphNode(
+    kind: gnkEnumValueDefinitionList,
+    children: self.optionalManyNode(
+      TokenKind.BRACE_L,
+      parseEnumValueDefinition,
+      TokenKind.BRACE_R
+    ),
+    loc: self.loc(start)
   )
 
 
-proc parseEnumValueDefinition(self: Parser): EnumValueDefinitionNode =
+proc parseEnumValueDefinition(self: Parser): GraphNode =
   ##[
-    EnumValueDefinition: Description? EnumValue Directives[Const]?
+    EnumValueDefinition:
+      Description? EnumValue Directives[Const]?
   ]##
   let
     start = self.lexer.token
     description = self.parseDescription()
     name = self.parseName()
     directives = self.parseDirectives(true)
-  return EnumValueDefinitionNode(
-    description: description,
-    name: name,
-    directives: directives,
+  return GraphNode(
+    kind: gnkEnumValueDefinition,
+    children: @[
+      description,
+      name,
+      directives
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseInputObjectTypeDefinition(self: Parser): TypeSystemDefinitionNode =
+proc parseInputObjectTypeDefinition(self: Parser): GraphNode =
   ##[
     InputObjectTypeDefinition
   ]##
@@ -1267,51 +1376,67 @@ proc parseInputObjectTypeDefinition(self: Parser): TypeSystemDefinitionNode =
     name = self.parseName()
     directives = self.parseDirectives(true)
     fields = self.parseInputFieldsDefinition()
-  return TypeSystemDefinitionNode(
-    kind: TypeDefinitionNode,
-    tdKind: InputObjectTypeDefinitionNode,
-    description: description,
-    name: name,
-    directives: directives,
-    fieldsDef: fields,
+  return GraphNode(
+    kind: gnkInputObjectTypeDefinition,
+    children: @[
+      description,
+      name,
+      directives,
+      fields
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseInputFieldsDefinition(self: Parser): seq[InputValueDefinitionNode] =
+proc parseInputFieldsDefinition(self: Parser): GraphNode =
   ##[
-    InputFieldsDefinition: {InputValueDefinition+}
+    InputFieldsDefinition:
+      **{** InputValueDefinition[list] **}**
   ]##
-  return self.optionalManyNode[:InputValueDefinitionNode](
-    TokenKind.BRACE_L,
-    parseInputValueDef,
-    TokenKind.BRACE_R
+  let start = self.lexer.token
+  return GraphNode(
+    kind: gnkInputFieldsDefinition,
+    children: self.optionalManyNode(
+      TokenKind.BRACE_L,
+      parseInputValueDef,
+      TokenKind.BRACE_R
+    ),
+    loc: self.loc(start)
   )
 
 
-proc parseSchemaExtension(self: Parser): SchemaExtensionNode =
+proc parseSchemaExtension(self: Parser): GraphNode =
   ##[
     SchemaExtension
   ]##
   let start = self.lexer.token
   discard self.expectKeyword("extend")
   discard self.expectKeyword("schema")
-  let directives = self.parseDirectives(true)
-  let operationTypes = self.optionalManyNode[:OperationTypeDefinitionNode](
-    TokenKind.BRACE_L,
-    parseOperationTypeDefinition,
-    TokenKind.BRACE_R
-  )
-  if directives.len == 0 and operationTypes.len == 0:
+  let
+    directives = self.parseDirectives(true)
+    otStart = self.lexer.token
+    operationTypes = GraphNode(
+      kind: gnkOperationTypeDefinitionList,
+      children: self.optionalManyNode(
+        TokenKind.BRACE_L,
+        parseOperationTypeDefinition,
+        TokenKind.BRACE_R
+      ),
+      loc: self.loc(otStart)
+    )
+  if directives.children.len == 0 and operationTypes.children.len == 0:
     raise self.unexpected()
-  return SchemaExtensionNode(
-    directives: directives,
-    operationTypes: operationTypes,
+  return GraphNode(
+    kind: gnkSchemaExtension,
+    children: @[
+      directives,
+      operationTypes
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseScalarTypeExtension(self: Parser): ScalarTypeExtensionNode =
+proc parseScalarTypeExtension(self: Parser): GraphNode =
   ##[
     ScalarTypeExtension
   ]##
@@ -1321,16 +1446,19 @@ proc parseScalarTypeExtension(self: Parser): ScalarTypeExtensionNode =
   let
     name = self.parseName()
     directives = self.parseDirectives(true)
-  if directives.len == 0:
+  if directives.children.len == 0:
     raise self.unexpected()
-  return ScalarTypeExtensionNode(
-    name: name,
-    directives: directives,
+  return GraphNode(
+    kind: gnkScalarTypeExtension,
+    children: @[
+      name,
+      directives
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseObjectTypeExtension(self: Parser): ObjectTypeExtensionNode =
+proc parseObjectTypeExtension(self: Parser): GraphNode =
   ##[
     ObjectTypeExtension
   ]##
@@ -1342,18 +1470,21 @@ proc parseObjectTypeExtension(self: Parser): ObjectTypeExtensionNode =
     interfaces = self.parseImplementsInterfaces()
     directives = self.parseDirectives(true)
     fields = self.parseFieldsDefinition()
-  if (interfaces.len == 0 or directives.len == 0 or fields.len == 0):
+  if (interfaces.children.len == 0 or directives.children.len == 0 or fields.children.len == 0):
     raise self.unexpected()
-  return ObjectTypeExtensionNode(
-    name: name,
-    interfaces: interfaces,
-    directives: directives,
-    fields: fields,
+  return GraphNode(
+    kind: gnkObjectTypeExtension,
+    children: @[
+      name,
+      interfaces,
+      directives,
+      fields
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseInterfaceTypeExtension(self: Parser): InterfaceTypeExtensionNode =
+proc parseInterfaceTypeExtension(self: Parser): GraphNode =
   ##[
     InterfaceTypeExtension
   ]##
@@ -1365,18 +1496,21 @@ proc parseInterfaceTypeExtension(self: Parser): InterfaceTypeExtensionNode =
     interfaces = self.parseImplementsInterfaces()
     directives = self.parseDirectives(true)
     fields = self.parseFieldsDefinition()
-  if (interfaces.len == 0 or directives.len == 0 or fields.len == 0):
+  if (interfaces.children.len == 0 or directives.children.len == 0 or fields.children.len == 0):
     raise self.unexpected()
-  return InterfaceTypeExtensionNode(
-    name: name,
-    interfaces: interfaces,
-    directives: directives,
-    fields: fields,
+  return GraphNode(
+    kind: gnkInterfaceTypeExtension,
+    children: @[
+      name,
+      interfaces,
+      directives,
+      fields
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseUnionTypeExtension(self: Parser): UnionTypeExtensionNode =
+proc parseUnionTypeExtension(self: Parser): GraphNode =
   ##[
     UnionTypeExtension
   ]##
@@ -1387,17 +1521,20 @@ proc parseUnionTypeExtension(self: Parser): UnionTypeExtensionNode =
     name = self.parseName()
     directives = self.parseDirectives(true)
     types = self.parseUnionMemberTypes()
-  if (directives.len == 0 or types.len == 0):
+  if (directives.children.len == 0 or types.children.len == 0):
     raise self.unexpected()
-  return UnionTypeExtensionNode(
-    name: name,
-    directives: directives,
-    types: types,
+  return GraphNode(
+    kind: gnkUnionTypeExtension,
+    children: @[
+      name,
+      directives,
+      types
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseEnumTypeExtension(self: Parser): EnumTypeExtensionNode =
+proc parseEnumTypeExtension(self: Parser): GraphNode =
   ##[
     EnumTypeExtension
   ]##
@@ -1408,17 +1545,20 @@ proc parseEnumTypeExtension(self: Parser): EnumTypeExtensionNode =
     name = self.parseName()
     directives = self.parseDirectives(true)
     values = self.parseEnumValuesDefinition()
-  if (directives.len == 0 or values.len == 0):
+  if (directives.children.len == 0 or values.children.len == 0):
     raise self.unexpected()
-  return EnumTypeExtensionNode(
-    name: name,
-    directives: directives,
-    values: values,
+  return GraphNode(
+    kind: gnkEnumTypeExtension,
+    children: @[
+      name,
+      directives,
+      values
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseInputObjectTypeExtension(self: Parser): InputObjectTypeExtensionNode =
+proc parseInputObjectTypeExtension(self: Parser): GraphNode =
   ##[
     InputObjectTypeExtension
   ]##
@@ -1429,17 +1569,20 @@ proc parseInputObjectTypeExtension(self: Parser): InputObjectTypeExtensionNode =
     name = self.parseName()
     directives = self.parseDirectives(true)
     fields = self.parseInputFieldsDefinition()
-  if (directives.len == 0 or fields.len == 0):
+  if (directives.children.len == 0 or fields.children.len == 0):
     raise self.unexpected()
-  return InputObjectTypeExtensionNode(
-    name: name,
-    directives: directives,
-    fields: fields,
+  return GraphNode(
+    kind: gnkInputObjectTypeExtension,
+    children: @[
+      name,
+      directives,
+      fields
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseDirectiveDefinition(self: Parser): TypeSystemDefinitionNode =
+proc parseDirectiveDefinition(self: Parser): GraphNode =
   ##[
     DirectiveDefinition
   ]##
@@ -1454,34 +1597,63 @@ proc parseDirectiveDefinition(self: Parser): TypeSystemDefinitionNode =
     repeatable = self.expectOptionalKeyword("repeatable")
   discard self.expectKeyword("on")
   let locations = self.parseDirectiveLocations()
-  return TypeSystemDefinitionNode(
-    kind: DirectiveDefinitionNode,
-    description: description,
-    name: name,
-    arguments: args,
-    repeatable: repeatable,
-    locations: locations,
+  return GraphNode(
+    kind: gnkDirectiveDefinition,
+    children: @[
+      description,
+      name,
+      args,
+      GraphNode(kind: gnkBooleanValue, boolValue: repeatable),
+      locations
+    ],
     loc: self.loc(start)
   )
 
 
-proc parseDirectiveLocations(self: Parser): seq[NameNode] =
+proc parseDirectiveLocations(self: Parser): GraphNode =
   ##[
-    DirectiveLocations
+    DirectiveLocations:
+      DirectiveLocations **|** DirectiveLocation **|**[opt] DirectiveLocation
   ]##
   # optional leading pipe
   discard self.expectOptionalToken(TokenKind.PIPE)
-  var locations: seq[NameNode]
+  let start = self.lexer.token
+  var locations: seq[GraphNode]
   while true:
     locations.add(self.parseDirectiveLocation())
     if self.expectOptionalToken(TokenKind.PIPE).isNil:
       break
-  return locations
+  return GraphNode(kind: gnkDirectiveLocations, children: locations, loc: self.loc(start))
 
 
-proc parseDirectiveLocation(self: Parser): NameNode =
+proc parseDirectiveLocation(self: Parser): GraphNode =
   ##[
-    DirectiveLocation
+    DirectiveLocation:
+      ExecutableDirectiveLocation
+      TypeSystemDirectiveLocation
+
+    ExecutableDirectiveLocation: **one of**
+      QUERY
+      MUTATION
+      SUBSCRIPTION
+      FIELD
+      FRAGMENT_DEFINITION
+      FRAGMENT_SPREAD
+      INLINE_FRAGMENT
+      VARIABLE_DEFINITION
+    
+    TypeSystemDirectiveLocation: **one of**
+      SCHEMA
+      SCALAR
+      OBJECT
+      FIELD_DEFINITION
+      ARGUMENT_DEFINITION
+      INTERFACE
+      UNION
+      ENUM
+      ENUM_VALUE
+      INPUT_OBJECT
+      INPUT_FIELD_DEFINITION
   ]##
   let
     start = self.lexer.token

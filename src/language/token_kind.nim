@@ -1,8 +1,14 @@
 ## Token Kind Module
 type TokenKind* = enum
-  #[
-    The different kinds of tokens that the lexer emits
-  ]#
+  ##[
+    A GraphQL document is comprised of several kinds of indivisible lexical tokens.
+    
+    These token kinds are emitted by the lexer and therefore defined on 
+    the spec: https://spec.graphql.org/draft/#sec-Language.Source-Text.Lexical-Tokens
+
+    The SOF and EOF token kinds are delimiters of a GraphQL Document, hence only appears
+    at the base JavaScript implementation and not at the spec.
+  ]##
   SOF = "<SOF>"
   EOF = "<EOF>"
   BANG = "!"
