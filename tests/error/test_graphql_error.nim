@@ -19,12 +19,10 @@ suite "Describe graphql error":
       """
       )
     )
-    let
-      parsedAST = parse(src)
-      operationNode = parsedAST.definitions[0]
-      operationDefNode = OperationDefinitionNode(operationNode)
-      castedOperationNode = Node(operationDefNode)
-      fieldNode = Node(operationDefNode.selectionSet.selections[0])
+    let document = parse(src)
+    check(document.kind == gnkDocument)
+    let operationDefinition = document.children[0]
+    let fieldNode = operationDefinition.children[4].children[0]
 
   test "Has a name message and stack trace":
     let e = newGraphQLError("msg")
@@ -58,14 +56,14 @@ suite "Describe graphql error":
     check(e.locations == @[newSourceLocation(2, 3)])
 
   test "Converts node with loc start zero to positions and locations":
-    let e = newGraphQLError("msg", some(castedOperationNode))
-    check(e.nodes == @[castedOperationNode])
+    let e = newGraphQLError("msg", some(operationDefinition))
+    check(e.nodes == @[operationDefinition])
     check(e.source == src)
     check(e.positions == @[0])
     check(e.locations == @[newSourceLocation(1, 1)])
 
   test "Converts source and positions to locations":
-    let e = newGraphQLError("msg", none(Node), some(src), some(@[6]))
+    let e = newGraphQLError("msg", none(GraphNode), some(src), some(@[6]))
     check(e.nodes.len == 0)
     check(e.source == src)
     check(e.positions == @[6])
@@ -107,7 +105,7 @@ suite "Describe print error":
   test "Prints an error using node without location":
     let error = newGraphQLError(
       "Error attached to node without location",
-      some(Node(parse("{ foo }", noLocation = true)))
+      some(parse("{ foo }", noLocation = true))
     )
     check(printError(error) == "Error attached to node without location")
 
@@ -125,12 +123,14 @@ suite "Describe print error":
           "SourceA"
         )
       )
-      firstOp = ObjectTypeDefinitionNode(firstDoc.definitions[0])
+      firstOp = firstDoc.children[0]
 
-    check(not firstOp.isNil and firstOp is ObjectTypeDefinitionNode and firstOp.fields.len > 0)
+    check(firstOp.kind == gnkObjectTypeDefinition)
+    check(firstOp.children[4].children.len > 0)
 
+    let firstField = firstOp.children[4].children[0]
+    check(firstField.kind == gnkFieldDefinition)
     let
-      firstField = firstOp.fields[0]
       secondDoc = parse(
         newSource(
           dedent(
@@ -143,18 +143,20 @@ suite "Describe print error":
           "SourceB"
         )
       )
-      secondOp = ObjectTypeDefinitionNode(secondDoc.definitions[0])
-    
-    check(not firstOp.isNil and firstOp is ObjectTypeDefinitionNode and secondOp.fields.len > 0)
+      secondOp = secondDoc.children[0]
 
+    check(secondOp.kind == gnkObjectTypeDefinition)
+    check(secondOp.children[4].children.len > 0)
+
+    let secondField = secondOp.children[4].children[0]
+    check(secondField.kind == gnkFieldDefinition)
     let
-      secondField = secondOp.fields[0]
       error = newGraphQLError(
         "Example error with two nodes",
-        some(@[Node(firstField.`type`), Node(secondField.`type`)])
+        some(@[firstField.children[3], secondField.children[3]])
       )
       printedError = printError(error)
-    
+
     check(printedError & "\n" == dedent(
       """
       Example error with two nodes

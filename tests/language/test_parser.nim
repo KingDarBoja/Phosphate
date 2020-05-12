@@ -100,7 +100,7 @@ suite "Describe Parser":
       newSourceLocation(1, 10)
     )
 
-  test "Does not accpet fragments spread of on":
+  test "Does not accept fragments spread of on":
     assertSyntaxError(
       "{ ...on }",
       "Expected Name, found '}'.",
@@ -114,21 +114,26 @@ suite "Describe Parser":
         { field(arg: "Has a \u0A0A multi-byte character.") }
         """
       )
-      definitions = doc.definitions
+      definitions = doc.children
+    check(doc.kind == gnkDocument)
     check(definitions.len == 1)
-    let 
-      selectionSet = cast[OperationDefinitionNode](definitions[0]).selectionSet
-      selections = selectionSet.selections
+    let operationDefinition = definitions[0]
+    check(operationDefinition.kind == gnkOperationDefinition)
+    let selectionSet = operationDefinition.children[4]
+    check(selectionSet.kind == gnkSelectionSet)
+    let selections = selectionSet.children
     check(selections.len == 1)
-    let 
-      arguments = selections[0].arguments
-    check(arguments.len == 1)
-    let value = arguments[0].value
-    check(value.value == "Has a \\u0A0A multi-byte character.")
+    let arguments = selections[0].children[2]
+    check(arguments.kind == gnkArgumentList)
+    let argument = arguments.children[0]
+    check(argument.kind == gnkArgument)
+    let value = argument.children[1]
+    check(value.kind == gnkStringValue)
+    check(value.strValue == "Has a \\u0A0A multi-byte character.")
 
-  # TODO: Provide fixtures
-  # test "Parses kitchen sink":
-  #   discard
+  ## TODO: Provide fixtures
+  test "Parses kitchen sink":
+    discard
 
   test "Allows non keywords anywhere a name is allowed":
     let nonKeywords = @[
@@ -191,8 +196,6 @@ suite "Describe Parser":
       """
     )
 
-  # This test shows the disadvantages of using classic OOP 
-  # to deal with AST stuff. Pretty much forced to use cast.
   test "Creates AST":
     let doc = parse(
       dedent(
@@ -206,65 +209,90 @@ suite "Describe Parser":
         """
       )
     )
+    check(doc.kind == gnkDocument)
     check(doc.loc == (0, 41))
-    let definitions = doc.definitions
+    let definitions = doc.children
     check(definitions.len == 1)
     # definitions[0]
-    let definition = cast[OperationDefinitionNode](definitions[0])
+    let definition = definitions[0]
+    check(definition.kind == gnkOperationDefinition)
     check(definition.loc == (0, 40))
-    check(definition.operation == OperationTypeNode.QUERY)
-    check(definition.name.isNil)
-    check(definition.variableDefinitions.len == 0)
-    check(definition.directives.len == 0)
+    let definitionOp = definition.children[0]
+    check(definitionOp.operation == GraphOperationTypeKind.gnkOperationQuery)
+    let definitionName = definition.children[1]
+    check(definitionName.kind == gnkName)
+    check(definitionName.value.len == 0)
+    let definitionVariableDef = definition.children[2]
+    check(definitionVariableDef.kind == gnkVariableDefinitionList)
+    check(definitionVariableDef.children.len == 0)
+    let definitionDirectives = definition.children[3]
+    check(definitionDirectives.kind == gnkDirectiveList)
+    check(definitionDirectives.children.len == 0)
     # definitions[0] -> selectionSet
-    var selectionSet = definition.selectionSet
+    var selectionSet = definition.children[4]
+    check(selectionSet.kind == gnkSelectionSet)
     check(selectionSet.loc == (0, 40))
     # definitions[0] -> selectionSet -> selections
-    var selections = selectionSet.selections
+    var selections = selectionSet.children
     check(selections.len == 1)
     var field = selections[0]
+    check(field.kind == gnkField)
     check(field.loc == (4, 38))
-    check(field.alias.isNil)
-    var name = field.name
+    var alias = field.children[0]
+    check(alias.kind == gnkEmpty)
+    check(alias.loc == (4, 8))
+    var name = field.children[1]
+    check(name.kind == gnkName)
     check(name.loc == (4, 8))
     check(name.value == "node")
     # definitions[0] -> selectionSet -> selections[0] -> arguments
-    let arguments = field.arguments
-    check(arguments.len == 1)
-    let argument = arguments[0]
-    name = argument.name
+    let arguments = field.children[2]
+    check(arguments.kind == gnkArgumentList)
+    check(arguments.children.len == 1)
+    let argument = arguments.children[0]
+    check(argument.kind == gnkArgument)
+    check(argument.loc == (9, 14))
+    name = argument.children[0]
+    check(name.kind == gnkName)
     check(name.loc == (9, 11))
     check(name.value == "id")
-    let value = argument.value
+    let value = argument.children[1]
+    check(value.kind == gnkIntValue)
     check(value.loc == (13, 14))
-    check(value.strValue == "4")
-    check(argument.loc == (9, 14))
-    check(field.directives.len == 0)
+    check(value.intValue == "4")
+    let directives = field.children[3]
+    check(directives.kind == gnkDirectiveList)
+    check(directives.children.len == 0)
     # definitions[0] -> selectionSet -> selections[0] -> selectionSet
-    selectionSet = field.selectionSet
+    selectionSet = field.children[4]
+    check(selectionSet.kind == gnkSelectionSet)
     check(selectionSet.loc == (16, 38))
-    selections = selectionSet.selections
+    selections = selectionSet.children
     check(selections.len == 2)
     # definitions[0] -> selectionSet -> selections[0] -> selectionSet -> selections[0]
     field = selections[0]
+    check(field.kind == gnkField)
     check(field.loc == (22, 24))
-    check(field.alias.isNil)
-    name = field.name
+    alias = field.children[0]
+    check(alias.kind == gnkEmpty)
+    name = field.children[1]
     check(name.loc == (22, 24))
     check(name.value == "id")
-    check(field.arguments.len == 0)
-    check(field.directives.len == 0)
-    check(field.selectionSet.isNil)
+    check(field.children[2].children.len == 0)
+    check(field.children[3].children.len == 0)
+    check(field.children[4].children.len == 0)
     # definitions[0] -> selectionSet -> selections[0] -> selectionSet -> selections[1]
     field = selections[1]
+    check(field.kind == gnkField)
     check(field.loc == (30, 34))
-    check(field.alias.isNil)
-    name = field.name
+    alias = field.children[0]
+    check(alias.kind == gnkEmpty)
+    name = field.children[1]
     check(name.loc == (30, 34))
     check(name.value == "name")
-    check(field.arguments.len == 0)
-    check(field.directives.len == 0)
-    check(field.selectionSet.isNil)
+    check(field.children[2].children.len == 0)
+    check(field.children[3].children.len == 0)
+    check(field.children[4].children.len == 0)
 
   test "Creates AST from nameless query without variables":
     let doc = parse(
@@ -278,45 +306,66 @@ suite "Describe Parser":
         """
       )
     )
+    check(doc.kind == gnkDocument)
     check(doc.loc == (0, 30))
-    let definitions = doc.definitions
+    let definitions = doc.children
     check(definitions.len == 1)
     # definitions[0]
-    let definition = cast[OperationDefinitionNode](definitions[0])
+    let definition = definitions[0]
+    check(definition.kind == gnkOperationDefinition)
     check(definition.loc == (0, 29))
-    check(definition.operation == OperationTypeNode.QUERY)
-    check(definition.name.isNil)
-    check(definition.variableDefinitions.len == 0)
-    check(definition.directives.len == 0)
+    let definitionOp = definition.children[0]
+    check(definitionOp.operation == GraphOperationTypeKind.gnkOperationQuery)
+    let definitionName = definition.children[1]
+    check(definitionName.kind == gnkName)
+    check(definitionName.value.len == 0)
+    let definitionVariableDef = definition.children[2]
+    check(definitionVariableDef.kind == gnkVariableDefinitionList)
+    check(definitionVariableDef.children.len == 0)
+    let definitionDirectives = definition.children[3]
+    check(definitionDirectives.kind == gnkDirectiveList)
+    check(definitionDirectives.children.len == 0)
     # definitions[0] -> selectionSet
-    var selectionSet = definition.selectionSet
+    var selectionSet = definition.children[4]
+    check(selectionSet.kind == gnkSelectionSet)
     check(selectionSet.loc == (6, 29))
     # definitions[0] -> selectionSet -> selections
-    var selections = selectionSet.selections
+    var selections = selectionSet.children
     check(selections.len == 1)
     var field = selections[0]
+    check(field.kind == gnkField)
     check(field.loc == (10, 27))
-    check(field.alias.isNil)
-    var name = field.name
+    var alias = field.children[0]
+    check(alias.kind == gnkEmpty)
+    check(alias.loc == (10, 14))
+    var name = field.children[1]
+    check(name.kind == gnkName)
     check(name.loc == (10, 14))
     check(name.value == "node")
-    check(field.arguments.len == 0)
-    check(field.directives.len == 0)
+    let arguments = field.children[2]
+    check(arguments.kind == gnkArgumentList)
+    check(arguments.children.len == 0)
+    let directives = field.children[3]
+    check(directives.kind == gnkDirectiveList)
+    check(directives.children.len == 0)
     # definitions[0] -> selectionSet -> selections[0] -> selectionSet
-    selectionSet = field.selectionSet
+    selectionSet = field.children[4]
+    check(selectionSet.kind == gnkSelectionSet)
     check(selectionSet.loc == (15, 27))
     # definitions[0] -> selectionSet -> selections[0] -> selectionSet -> selections
-    selections = selectionSet.selections
+    selections = selectionSet.children
     check(selections.len == 1)
     field = selections[0]
+    check(field.kind == gnkField)
     check(field.loc == (21, 23))
-    check(field.alias.isNil)
-    name = field.name
+    alias = field.children[0]
+    check(alias.kind == gnkEmpty)
+    name = field.children[1]
     check(name.loc == (21, 23))
     check(name.value == "id")
-    check(field.arguments.len == 0)
-    check(field.directives.len == 0)
-    check(field.selectionSet.isNil)
+    check(field.children[2].children.len == 0)
+    check(field.children[3].children.len == 0)
+    check(field.children[4].children.len == 0)
 
   test "Allows parsing without source location information":
     let result = parse("{ id }", noLocation = true)
@@ -369,81 +418,103 @@ suite "Describe Parse Value":
 
   test "Parses null value":
     let res = parseValue("null")
+    check(res.kind == gnkNullValue)
     check(res.loc == (0, 4))
 
   test "Parses empty strings":
     let res = parseValue("\"\"")
-    check(res.value == "")
+    check(res.kind == gnkStringValue)
+    check(res.strValue == "")
     check(res.loc == (0, 2))
   
   test "Parses list values":
     let res = parseValue("[123 \"abc\"]")
+    check(res.kind == gnkListValue)
     check(res.loc == (0, 11))
-    let values = res.values
+    let values = res.children
     check(values.len == 2)
     let valueOne = values[0]
+    check(valueOne.kind == gnkIntValue)
     check(valueOne.loc == (1, 4))
-    check(valueOne.strValue == "123")
+    check(valueOne.intValue == "123")
     let valueTwo = values[1]
+    check(valueTwo.kind == gnkStringValue)
     check(valueTwo.loc == (5, 10))
-    check(valueTwo.value == "abc")
+    check(valueTwo.strValue == "abc")
 
   test "Parses block strings":
     let res = parseValue("[\"\"\"long\"\"\" \"short\"]")
+    check(res.kind == gnkListValue)
     check(res.loc == (0, 20))
-    let values = res.values
+    let values = res.children
     check(values.len == 2)
     let valueOne = values[0]
+    check(valueOne.kind == gnkStringValue)
     check(valueOne.loc == (1, 11))
-    check(valueOne.value == "long")
-    check(valueOne.`block`)
+    check(valueOne.strValue == "long")
+    check(valueOne.isBlockString)
     let valueTwo = values[1]
+    check(valueTwo.kind == gnkStringValue)
     check(valueTwo.loc == (12, 19))
-    check(valueTwo.value == "short")
-    check(not valueTwo.`block`)
+    check(valueTwo.strValue == "short")
+    check(not valueTwo.isBlockString)
 
 
 suite "Describe Parse Type":
 
   test "Parses well know types":
     let res = parseType("String")
+    check(res.kind == gnkNamedType)
     check(res.loc == (0, 6))
-    let name = res.name
+    let name = res.children[0]
+    check(name.kind == gnkName)
     check(name.loc == (0, 6))
     check(name.value == "String")
 
   test "Parses custom types":
     let res = parseType("MyType")
+    check(res.kind == gnkNamedType)
     check(res.loc == (0, 6))
-    let name = res.name
+    let name = res.children[0]
+    check(name.kind == gnkName)
     check(name.loc == (0, 6))
     check(name.value == "MyType")
 
   test "Parses list types":
     let res = parseType("[MyType]")
+    check(res.kind == gnkListType)
     check(res.loc == (0, 8))
-    let stype = res.`type`
-    check(stype.loc == (1, 7))
-    let name = stype.name
+    let childType = res.children[0]
+    check(childType.kind == gnkNamedType)
+    check(childType.loc == (1, 7))
+    let name = childType.children[0]
+    check(name.kind == gnkName)
     check(name.loc == (1, 7))
     check(name.value == "MyType")
 
   test "Parses non null types":
     let res = parseType("MyType!")
+    check(res.kind == gnkNonNullType)
     check(res.loc == (0, 7))
-    let stype = res.`type`
-    check(stype.loc == (0, 6))
-    let name = stype.name
+    let childType = res.children[0]
+    check(childType.kind == gnkNamedType)
+    check(childType.loc == (0, 6))
+    let name = childType.children[0]
+    check(name.kind == gnkName)
     check(name.loc == (0, 6))
     check(name.value == "MyType")
 
   test "Parses nested types":
     let res = parseType("[MyType!]")
+    check(res.kind == gnkListType)
     check(res.loc == (0, 9))
-    let stype = res.`type`
-    check(stype.loc == (1, 8))
-    let ntype = stype.`type`
-    check(ntype.loc == (1, 7))
-    let name = ntype.name
+    let nonNullType = res.children[0]
+    check(nonNullType.kind == gnkNonNullType)
+    check(nonNullType.loc == (1, 8))
+    let childType = nonNullType.children[0]
+    check(childType.kind == gnkNamedType)
+    check(childType.loc == (1, 7))
+    let name = childType.children[0]
+    check(name.kind == gnkName)
     check(name.loc == (1, 7))
     check(name.value == "MyType")
