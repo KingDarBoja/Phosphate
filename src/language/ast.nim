@@ -110,7 +110,6 @@ type
     gnkOperationMutation = "mutation"
     gnkOperationSubscription = "subscription"
 
-type
   GraphNodeKind* = enum
     ## GraphQL AST node kinds based on the spec language section:
     ## https://spec.graphql.org/draft/#sec-Language
@@ -175,8 +174,6 @@ type
     gnkInputFieldsDefinition        ## https://spec.graphql.org/draft/#InputFieldsDefinition
     gnkDirectiveLocations           ## https://spec.graphql.org/draft/#DirectiveLocations
 
-
-type
   GraphNode* = ref object
     loc*: Location
     case kind*: GraphNodeKind
