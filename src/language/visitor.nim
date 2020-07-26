@@ -1,4 +1,4 @@
-import tables, sequtils
+import tables, sequtils, strformat, strutils
 
 import language/ast
 
@@ -161,7 +161,7 @@ const QueryDocumentKeys: Table[string, seq[string]] =
 
 
 type
-  VisitorCommand = enum
+  VisitorCommand* = enum
     ##[
       Special return values for the visitor methods.
       Note that in GraphQL.js these are defined differently:
@@ -174,62 +174,77 @@ type
     ]## 
     vcBreak, vcSkip, vcRemove, vcIdle
 
-  VisitFuncParams = object
+  VisitFuncParams* = object
     ##[
       A visitor is comprised of visit functions, which are called on each node
       during the visitor's traversal.
     ]##
-    node: GraphNode
+    node*: GraphNode
     ## The current node being visiting.
-    key: int
+    key*: int
     ## The index or key to this node from the parent node or Array.
-    parent: GraphNode
+    parent*: GraphNode
     ## The parent immediately above this node, which may be an Array.
-    path: seq[string]
+    path*: seq[int]
     ## The key path to get to this node from the root node.
-    ancestors: seq[GraphNode]
+    ancestors*: seq[GraphNode]
     ##[
       All nodes and Arrays visited before reaching parent of this node.
       These correspond to array indices in `path`.
       Note: ancestors includes arrays which contain the parent of visited node.
     ]##
 
-  VisitFun = proc (p: VisitFuncParams): (VisitorCommand, GraphNode)
+  VisitFun* = proc (p: VisitFuncParams): tuple[cmd: VisitorCommand, rn: GraphNode]
 
-  NamedVisitFuncs = object
+  NamedVisitFuncs* = object
     kind*: VisitFun       # 1. Named visitors triggered when entering a node of a specific kind.
     enter*: VisitFun      # 2. Named visitors that trigger upon entering and leaving a node of a specific kind.
     leave*: VisitFun      # 2. Named visitors that trigger upon entering and leaving a node of a specific kind.
 
-  VisitorOptions = ref object
+  VisitorOptions* = ref object
     kindFunMap*: Table[GraphNodeKind, NamedVisitFuncs]   # 1 and 2
     enter*: VisitFun       # 3. Generic visitors that trigger upon entering and leaving any node.
     leave*: VisitFun       # 3. Generic visitors that trigger upon entering and leaving any node.
     enterKindMap*: Table[GraphNodeKind, VisitFun]  # 4. Parallel visitors for entering and leaving nodes of a specific kind.
     leaveKindMap*: Table[GraphNodeKind, VisitFun]  # 4. Parallel visitors for entering and leaving nodes of a specific kind.
 
-  VisitorEdit = ref object
-    key: int
-    value: GraphNode
+  VisitorEdit* = ref object
+    key*: int
+    value*: GraphNode
 
-  VisitorStack = ref object
-    index: int
-    keys: seq[string]
-    edits: seq[VisitorEdit]
-    inSlice: bool
-    prev: VisitorStack
-
-
-proc popNodeSlice(a: seq[seq[GraphNode]]): (seq[GraphNode], seq[seq[GraphNode]]) =
-  if a.len == 0:
-    return (@[], @[])
-  return (a[^1], a[0..^1])
+  VisitorStack* = ref object
+    index*: int
+    keys*: seq[string]
+    edits*: seq[VisitorEdit]
+    inSlice*: bool
+    prev*: VisitorStack
 
 
-proc removeNodeByIndex(a: seq[GraphNode], pos: int): seq[GraphNode] =
-  if pos >= a.len:
-    return a
-  return concat(a[0 ..< pos], a[pos + 1 ..^ 1])
+proc initVisitFuncParams*(
+  node: GraphNode = nil,
+  key = 0,
+  parent: GraphNode = nil,
+  path: seq[int] = @[],
+  ancestors: seq[GraphNode] = @[]
+): VisitFuncParams =
+  VisitFuncParams(node: node, key: key, parent: parent, path: path, ancestors: ancestors)
+
+
+proc newVisitorOptions*(
+  kindFunMap = initTable[GraphNodeKind, NamedVisitFuncs](),
+  enter: VisitFun = nil,
+  leave: VisitFun = nil,
+  enterKindMap = initTable[GraphNodeKind, VisitFun](),
+  leaveKindMap = initTable[GraphNodeKind, VisitFun](),
+): VisitorOptions =
+  new(result)
+  result.kindFunMap = kindFunMap
+  result.enterKindMap = enterKindMap
+  result.leaveKindMap = leaveKindMap
+  if not enter.isNil:
+    result.enter = enter
+  if not leave.isNil:
+    result.leave = leave
 
 
 proc getVisitFn*(
@@ -262,18 +277,18 @@ proc getVisitFn*(
     # Generic Visitor
     if not visitorOpts.enter.isNil:
       # { enter() {} }
+      echo "-- GENERIC: Check if has enter! --"
       result = visitorOpts.enter
     if visitorOpts.enterKindMap.hasKey(kind):
       # { enter: { Kind() {} } }
       result = visitorOpts.leaveKindMap[kind]
-  result = nil
         
 
 proc visit*(
   root: GraphNode,
   visitor: VisitorOptions,
-  visitorKeys: GraphNodeKind
-): GraphNode =
+  # visitorKeys: seq[GraphNodeKind] = @[]
+): (VisitorCommand, GraphNode) =
   ##[
     Visit each node in an AST.
 
@@ -286,12 +301,11 @@ proc visit*(
     false), editing the AST by returning a value or Nil to remove the value, or to stop
     the whole traversal by returning BREAK.
 
-    When usingvisit() to edit an AST, the original AST will not be modified,
+    When using visit() to edit an AST, the original AST will not be modified,
     and a new version of the AST with the changes applied will be returned from the
     visit function.
   ]##
   var
-    newRoot: GraphNode = root
     stack: VisitorStack
     parent: GraphNode
     parentSlice: seq[GraphNode]
@@ -303,49 +317,84 @@ proc visit*(
     path: seq[int]
     ancestors: seq[GraphNode]
     ancestorsSlice: seq[seq[GraphNode]]
+    newRoot = root
 
   while true:
     inc(index)
+    echo fmt"Index: {index}"
     let
       isLeaving = index == keys.len
       isEdited = isLeaving and edits.len > 0
     var
       key: int
-      node: GraphNode = nil
-      nodeSlice: seq[GraphNode]
-    # key: string for structs or int for slices.
-    # node: GraphNode or can be anything
+      node: GraphNode
+      parent: GraphNode
+
     if isLeaving:
-      var
-        key, path = path.pop
-        node = parent
-        parent, ancestors = ancestors.pop
-        nodeSlice = parentSlice
-        parentSlice, ancestorsSlice = popNodeSlice(ancestorsSlice)
-      if isEdited:
-        let prevInSlice = inSlice
-        var editOffset = 0
-        for editIndex, edit in edits.mpairs:
-          if inSlice:
-            if edit.value.isNil:
-              nodeSlice = removeNodeByIndex(nodeSlice, edit.key - editOffset)
-              inc(editOffset)
-            else:
-              nodeSlice[edit.key - editOffset] = edit.value
-          else:
-            # Not sure about this one
-            nodeSlice[edit.key - editOffset] = edit.value
-      index = stack.index
-      keys = stack.keys
-      edits = stack.edits
-      inSlice = stack.inSlice
-      stack = stack.prev
+      key = if ancestors.len > 0: path[^1] else: -1
+      node = parent
+      parent = if ancestors.len > 0: ancestors.pop() else: nil
+      echo fmt"Leaving: {root.kind}"
     else:
-      # Get Key
       if not parent.isNil:
         if inSlice:
           key = index
+          node = parent.children[key]
         else:
           key = keys[index]
-        node = parentSlice[key]
+          node = parent.children[key]
+      else:
+        key = -1
+        node = newRoot
+      
+      if node.isNil:
+        continue
+      if not parent.isNil:
+        path.add(key)
+
+    if not node.isNil:
+      let visitProc = getVisitFn(visitor, node.kind, isLeaving)
+      echo "-------- VISIT FUN --------"
+      if not visitProc.isNil:
+        echo "Reaching code"
+        result = visitProc(initVisitFuncParams(node, key, parent, path, ancestors))
+
+    # echo "------ RESULT --------"
+    # echo path
+    # echo repr(result)
+    break;
+
+
+
+# proc visitTest*(
+#   root: GraphNode,
+#   parent: GraphNode = nil,
+#   level: int = 1
+# ): GraphNode =
+#   # Playing with echo to have some good looking AST printed for debugging
+#   let newRoot: GraphNode = root
+#   if level == 1:
+#     echo "  ".repeat(level) & fmt" Parent Node: {newRoot.kind}"
+#   case newRoot.kind
+#   of gnkName, gnkIntValue, gnkFloatValue, gnkStringValue, gnkBooleanValue, gnkNullValue, gnkEmpty, gnkEnumValue, gnkOperationType:
+#     # Apply visitor options to this Node
+#     echo "    ".repeat(level) & fmt" Leaf Node: {newRoot.kind} "
+#   of gnkSelectionSet:
+#     if not parent.isNil:
+#       # Parent in this case is gnkField
+#       for idx, child in parent.children.mpairs:
+#         if child.kind == gnkSelectionSet:
+#           # You can't remove this children since we are still iterating over it
+#           # parent.children.delete(idx)
+#           # For now, setting to nil
+#           parent.children[idx] = nil
+#           break;
+#   else:
+#     # Recursively Walk and Apply visitor to every children
+#     if newRoot.children.len > 0:
+#       for idx, child in newRoot.children.pairs:
+#         echo "    ".repeat(level).join("") & fmt" Child Node: {child.kind}"
+#         discard visitTest(child, newRoot, level + 1)
+#     else:
+#       echo "    ".repeat(level).join("") & " No Children"
 
