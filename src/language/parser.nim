@@ -484,7 +484,7 @@ proc parseOperationDefinition(self: Parser): GraphNode =
       kind: gnkOperationDefinition,
       children: @[
         op,
-        self.parseEmpty(gnkName),
+        self.parseEmpty(gnkEmpty),
         self.parseEmpty(gnkVariableDefinitionList),
         self.parseEmpty(gnkDirectiveList),
         self.parseSelectionSet()

@@ -220,8 +220,7 @@ suite "Describe Parser":
     let definitionOp = definition.children[0]
     check(definitionOp.operation == GraphOperationTypeKind.gnkOperationQuery)
     let definitionName = definition.children[1]
-    check(definitionName.kind == gnkName)
-    check(definitionName.value.len == 0)
+    check(definitionName.kind == gnkEmpty)
     let definitionVariableDef = definition.children[2]
     check(definitionVariableDef.kind == gnkVariableDefinitionList)
     check(definitionVariableDef.children.len == 0)
