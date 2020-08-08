@@ -35,6 +35,7 @@ suite "Visitor Test Suite":
     echo "********** Visited Result **********"
     for i, v in visited.pairs:
       echo fmt"{i} - {v}"
+    discard visitTest(ast)
 
   # test "Random Test":
   #   echo "----------------- Longer AST -----------------"

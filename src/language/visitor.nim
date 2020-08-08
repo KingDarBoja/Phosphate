@@ -345,12 +345,14 @@ proc visit*(
     newRoot = root
 
   echo fmt"Initial Index: {index}"
-  # while true:
   while true:
+  # var counter = 0
+  # while counter < 5:
+    # inc(counter)
     inc(index)
     echo "-------------------------------------------------------"
     echo fmt"{index} - Current Iteration"
-    echo fmt"{index} - Keys Len: {keys.len} - Current Node Kind: {root.kind}"
+    echo fmt"{index} - Keys Len: {keys.len} - Current Node Kind: {newRoot.kind}"
     echo fmt"{index} - Keys: @[" & keys.join(", ") & "]"
     var
       isLeaving = index == keys.len
@@ -360,6 +362,7 @@ proc visit*(
       node: GraphNode
       nodeSlice: seq[GraphNode]
 
+    echo fmt"{index} - In Slice?: {inSlice}"
     if isLeaving:
       echo fmt"{index} - Is Leaving"
       echo fmt"{index} - Path: " & map(path, proc (n: GraphNodeKind): string = $n).join(", ")
@@ -397,13 +400,21 @@ proc visit*(
         else:
           key = keys[index]
           case parent.kind:
-          of gnkName, gnkIntValue, gnkFloatValue, gnkStringValue, gnkBooleanValue, gnkNullValue, gnkEmpty, gnkEnumValue, gnkOperationType:
+          of gnkEmpty, gnkName, gnkIntValue, gnkFloatValue, gnkStringValue, gnkBooleanValue, gnkNullValue, gnkEnumValue, gnkOperationType:
             discard
           else:
-            for idx, child in parent.children.pairs:
-              if child.kind == key:
-                node = parent.children[idx]
-                break
+            if parent.children.len > 0:
+              for idx, child in parent.children.pairs:
+                if child.kind == key:
+                  case child.kind:
+                  of gnkEmpty, gnkOperationType:
+                    continue
+                  of gnkName, gnkIntValue, gnkFloatValue, gnkStringValue, gnkBooleanValue, gnkNullValue, gnkEnumValue:
+                    node = child
+                  else:
+                    if child.children.len > 0:
+                      node = child
+                      break
         echo fmt"{index} - Key: {key}"
         if not node.isNil:
           echo fmt"{index} - Node Kind: {node.kind}"
@@ -451,7 +462,10 @@ proc visit*(
     echo fmt"{index} - Is Edited: {isEdited}"
     echo fmt"{index} - Result: {result}"
     if result.vc == vcIdle and isEdited:
-      edits.add((key, node))
+      if not prevInSlice:
+        edits.add((key, node))
+      else:
+        edits.add(map(nodeSlice, proc (ns: GraphNode): (GraphNodeKind, GraphNode) = (key, ns)))
 
     if isLeaving:
       if path.len > 0:
@@ -463,26 +477,43 @@ proc visit*(
       echo fmt"{index} - Stack in Slice?: {stack.inSlice}"
       echo fmt"{index} - Stack Index: {stack.index}"
       echo fmt"{index} - Node Kind: {node.kind}"
-      inSlice = nodeSlice.len > 0
+      keys = @[]
+      index = -1
+      edits = @[]
       if nodeSlice.len > 0:
+        echo fmt"{index} - ********************** IN SLICE *****************"
         inSlice = true
         for nodeIdx, nodeItem in nodeSlice.pairs:
-          keys.add(nodeItem.kind)
+          case nodeItem.kind:
+          of gnkName, gnkIntValue, gnkFloatValue, gnkStringValue, gnkBooleanValue, gnkNullValue, gnkEnumValue, gnkOperationType:
+            discard
+          of gnkEmpty:
+            echo "!!! ----------- Empty Node Slice Kind ----------- !!!"
+            discard
+          else:
+            keys.add(nodeItem.kind)
       else:
         inSlice = false
         if not node.isNil:
           case node.kind:
-          of gnkName, gnkIntValue, gnkFloatValue, gnkStringValue, gnkBooleanValue, gnkNullValue, gnkEmpty, gnkEnumValue, gnkOperationType:
+          of gnkName, gnkIntValue, gnkFloatValue, gnkStringValue, gnkBooleanValue, gnkNullValue, gnkEnumValue, gnkOperationType:
+            discard
+          of gnkEmpty:
+            echo "!!! ----------- Empty Node Kind ----------- !!!"
             discard
           else:
-            for nodeIdx, nodeItem in node.children:
-              keys.add(nodeItem.kind)
+            for nodeIdx, nodeItem in node.children.pairs:
+              case nodeItem.kind:
+              of gnkEmpty:
+                discard
+              else:
+                keys.add(nodeItem.kind)
       # keys = if inSlice: @[node.kind] else: map(node.children, proc (n: GraphNode): GraphNodeKind = n.kind)
-      index = -1
-      edits = @[]
       if not parent.isNil:
         ancestors.add(parent)
       parent = node
+      ancestorsSlice.add(parentSlice)
+      parentSlice = nodeSlice
 
     if stack.isNil:
       break
@@ -500,35 +531,35 @@ proc visit*(
 
 
 
-# proc visitTest*(
-#   root: GraphNode,
-#   parent: GraphNode = nil,
-#   level: int = 1
-# ): GraphNode =
-#   # Playing with echo to have some good looking AST printed for debugging
-#   let newRoot: GraphNode = root
-#   if level == 1:
-#     echo "  ".repeat(level) & fmt" Parent Node: {newRoot.kind}"
-#   case newRoot.kind
-#   of gnkName, gnkIntValue, gnkFloatValue, gnkStringValue, gnkBooleanValue, gnkNullValue, gnkEmpty, gnkEnumValue, gnkOperationType:
-#     # Apply visitor options to this Node
-#     echo "    ".repeat(level) & fmt" Leaf Node: {newRoot.kind} "
-#   of gnkSelectionSet:
-#     if not parent.isNil:
-#       # Parent in this case is gnkField
-#       for idx, child in parent.children.mpairs:
-#         if child.kind == gnkSelectionSet:
-#           # You can't remove this children since we are still iterating over it
-#           # parent.children.delete(idx)
-#           # For now, setting to nil
-#           parent.children[idx] = nil
-#           break
-#   else:
-#     # Recursively Walk and Apply visitor to every children
-#     if newRoot.children.len > 0:
-#       for idx, child in newRoot.children.pairs:
-#         echo "    ".repeat(level).join("") & fmt" Child Node: {child.kind}"
-#         discard visitTest(child, newRoot, level + 1)
-#     else:
-#       echo "    ".repeat(level).join("") & " No Children"
+proc visitTest*(
+  root: GraphNode,
+  parent: GraphNode = nil,
+  level: int = 1
+): GraphNode =
+  # Playing with echo to have some good looking AST printed for debugging
+  let newRoot: GraphNode = root
+  if level == 1:
+    echo "  ".repeat(level) & fmt" Parent Node: {newRoot.kind}"
+  case newRoot.kind
+  of gnkName, gnkIntValue, gnkFloatValue, gnkStringValue, gnkBooleanValue, gnkNullValue, gnkEmpty, gnkEnumValue, gnkOperationType:
+    # Apply visitor options to this Node
+    echo "    ".repeat(level) & fmt" Leaf Node: {newRoot.kind} "
+  # of gnkSelectionSet:
+  #   if not parent.isNil:
+  #     # Parent in this case is gnkField
+  #     for idx, child in parent.children.mpairs:
+  #       if child.kind == gnkSelectionSet:
+  #         # You can't remove this children since we are still iterating over it
+  #         # parent.children.delete(idx)
+  #         # For now, setting to nil
+  #         parent.children[idx] = nil
+  #         break
+  else:
+    # Recursively Walk and Apply visitor to every children
+    if newRoot.children.len > 0:
+      for idx, child in newRoot.children.pairs:
+        echo "    ".repeat(level).join("") & fmt" Child Node: {child.kind}"
+        discard visitTest(child, newRoot, level + 1)
+    else:
+      echo "    ".repeat(level).join("") & " No Children"
 
