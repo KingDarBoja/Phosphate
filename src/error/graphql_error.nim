@@ -66,6 +66,23 @@ type GraphQLError* = ref object of CatchableError
   ]#
 
 
+# TODO: Check the use of converters to tackle this one.
+# Example:
+# import options
+
+# converter toOption[T](x:T):Option[T] = some(x)
+
+# proc xxx(param1: string, param2, param3 = none(int)) =
+#   if param2.isSome:
+#     echo "param2: ", param2.some
+#   if param3.isSome:
+#     echo "param3: ", param3.some
+
+# xxx("a", param2 = 1)
+# xxx("b", param3 = 2)
+# xxx("c", 3, 4)
+# xxx("d")
+
 proc newGraphQLError*(
   message: string,
   nodes: Option[seq[GraphNode]] or Option[GraphNode] = none(GraphNode),
