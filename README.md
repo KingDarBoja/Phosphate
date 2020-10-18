@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" height="380px"/>
+</p>
+
 # Phosphate
 
 Phosphate is a Nim port of GraphQL.js, the JavaScript reference implementation of GraphQL created by Facebook.
