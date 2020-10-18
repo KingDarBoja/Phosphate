@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" width="256px"/>
+  <img src="assets/logo.svg" height="380px"/>
 </p>
 
 # Phosphate
